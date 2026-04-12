@@ -4,6 +4,7 @@ import com.volleyball.volleyballcommunitybackend.config.FileProperties;
 import com.volleyball.volleyballcommunitybackend.dto.response.FileResponse;
 import com.volleyball.volleyballcommunitybackend.entity.FileEntity;
 import com.volleyball.volleyballcommunitybackend.repository.FileRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
@@ -30,7 +31,7 @@ public class FileService {
         this.fileProperties = fileProperties;
     }
 
-    public FileResponse uploadFile(MultipartFile file, String fileType, Long userId) {
+    public FileResponse uploadFile(MultipartFile file, String fileType, Long userId, HttpServletRequest request) {
         // 校验文件类型
         List<String> allowedTypes = Arrays.asList(fileProperties.getAllowedTypes().split(","));
         if (!allowedTypes.contains(fileType)) {
@@ -75,8 +76,8 @@ public class FileService {
 
             FileEntity saved = fileRepository.save(fileEntity);
 
-            // 返回响应
-            return toFileResponse(saved);
+            // 返回响应（使用动态URL）
+            return toFileResponse(saved, request);
 
         } catch (IOException e) {
             throw new RuntimeException("文件保存失败: " + e.getMessage());
@@ -103,13 +104,32 @@ public class FileService {
         }
     }
 
-    public String getFileUrl(Long id) {
+    /**
+     * 获取文件完整URL（动态适配当前请求的host）
+     */
+    public String getFileUrl(Long id, HttpServletRequest request) {
         FileEntity fileEntity = getFileById(id);
-        return fileProperties.getBaseUrl() + "/" + id;
+        String baseUrl = getBaseUrl(request);
+        return baseUrl + "/" + id;
     }
 
-    private FileResponse toFileResponse(FileEntity fileEntity) {
-        String url = fileProperties.getBaseUrl() + "/" + fileEntity.getId();
+    /**
+     * 获取当前请求的Base URL（自动适配http/https）
+     */
+    private String getBaseUrl(HttpServletRequest request) {
+        String scheme = request.getScheme();
+        String host = request.getServerName();
+        int port = request.getServerPort();
+
+        // 如果是标准端口（80/443），不显示端口
+        if ((scheme.equals("http") && port == 80) || (scheme.equals("https") && port == 443)) {
+            return scheme + "://" + host + "/api/file";
+        }
+        return scheme + "://" + host + ":" + port + "/api/file";
+    }
+
+    private FileResponse toFileResponse(FileEntity fileEntity, HttpServletRequest request) {
+        String url = getBaseUrl(request) + "/" + fileEntity.getId();
         return new FileResponse(
                 fileEntity.getId(),
                 fileEntity.getFileName(),

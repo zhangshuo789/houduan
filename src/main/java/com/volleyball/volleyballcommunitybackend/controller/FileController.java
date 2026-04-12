@@ -4,6 +4,7 @@ import com.volleyball.volleyballcommunitybackend.dto.response.ApiResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.FileResponse;
 import com.volleyball.volleyballcommunitybackend.entity.FileEntity;
 import com.volleyball.volleyballcommunitybackend.service.FileService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -26,13 +27,14 @@ public class FileController {
     public ResponseEntity<ApiResponse<FileResponse>> uploadFile(
             @RequestParam("file") MultipartFile file,
             @RequestParam("type") String fileType,
-            Authentication authentication) {
+            Authentication authentication,
+            HttpServletRequest request) {
         if (authentication == null) {
             return ResponseEntity.status(401)
                     .body(ApiResponse.error(401, "请先登录"));
         }
         Long userId = (Long) authentication.getPrincipal();
-        FileResponse fileResponse = fileService.uploadFile(file, fileType, userId);
+        FileResponse fileResponse = fileService.uploadFile(file, fileType, userId, request);
         return ResponseEntity.ok(ApiResponse.success("上传成功", fileResponse));
     }
 
@@ -48,8 +50,10 @@ public class FileController {
     }
 
     @GetMapping("/{id}/url")
-    public ResponseEntity<ApiResponse<String>> getFileUrl(@PathVariable Long id) {
-        String url = fileService.getFileUrl(id);
+    public ResponseEntity<ApiResponse<String>> getFileUrl(
+            @PathVariable Long id,
+            HttpServletRequest request) {
+        String url = fileService.getFileUrl(id, request);
         return ResponseEntity.ok(ApiResponse.success(url));
     }
 }

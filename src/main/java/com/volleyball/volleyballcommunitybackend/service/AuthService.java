@@ -6,6 +6,7 @@ import com.volleyball.volleyballcommunitybackend.dto.response.LoginResponse;
 import com.volleyball.volleyballcommunitybackend.entity.User;
 import com.volleyball.volleyballcommunitybackend.repository.UserRepository;
 import com.volleyball.volleyballcommunitybackend.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -15,11 +16,13 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final FileService fileService;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, FileService fileService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.fileService = fileService;
     }
 
     public User register(RegisterRequest request) {
@@ -35,7 +38,7 @@ public class AuthService {
         return userRepository.save(user);
     }
 
-    public LoginResponse login(LoginRequest request) {
+    public LoginResponse login(LoginRequest request, HttpServletRequest httpRequest) {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new RuntimeException("用户名或密码错误"));
 
@@ -45,11 +48,21 @@ public class AuthService {
 
         String token = jwtUtil.generateToken(user.getId(), user.getUsername());
 
+        String avatarUrl = null;
+        if (user.getAvatar() != null && !user.getAvatar().isEmpty()) {
+            try {
+                Long fileId = Long.parseLong(user.getAvatar());
+                avatarUrl = fileService.getFileUrl(fileId, httpRequest);
+            } catch (NumberFormatException e) {
+                avatarUrl = user.getAvatar();
+            }
+        }
+
         LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo(
                 user.getId(),
                 user.getUsername(),
                 user.getNickname(),
-                user.getAvatar()
+                avatarUrl
         );
 
         return new LoginResponse(token, userInfo);

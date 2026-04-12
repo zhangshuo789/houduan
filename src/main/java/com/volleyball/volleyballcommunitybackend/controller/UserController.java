@@ -2,8 +2,9 @@ package com.volleyball.volleyballcommunitybackend.controller;
 
 import com.volleyball.volleyballcommunitybackend.dto.request.UpdateUserRequest;
 import com.volleyball.volleyballcommunitybackend.dto.response.ApiResponse;
-import com.volleyball.volleyballcommunitybackend.entity.User;
+import com.volleyball.volleyballcommunitybackend.dto.response.UserResponse;
 import com.volleyball.volleyballcommunitybackend.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -20,21 +21,24 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<User>> getUserById(@PathVariable Long id) {
-        User user = userService.getUserById(id);
+    public ResponseEntity<ApiResponse<UserResponse>> getUserById(
+            @PathVariable Long id,
+            HttpServletRequest request) {
+        UserResponse user = userService.getUserById(id, request);
         return ResponseEntity.ok(ApiResponse.success(user));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<User>> updateUser(
+    public ResponseEntity<ApiResponse<UserResponse>> updateUser(
             @PathVariable Long id,
-            @Valid @RequestBody UpdateUserRequest request,
-            Authentication authentication) {
+            @Valid @RequestBody UpdateUserRequest updateRequest,
+            Authentication authentication,
+            HttpServletRequest request) {
         Long currentUserId = (Long) authentication.getPrincipal();
         if (!currentUserId.equals(id)) {
             throw new RuntimeException("无权限修改此用户信息");
         }
-        User user = userService.updateUser(id, request);
+        UserResponse user = userService.updateUser(id, updateRequest, request);
         return ResponseEntity.ok(ApiResponse.success("更新成功", user));
     }
 }
