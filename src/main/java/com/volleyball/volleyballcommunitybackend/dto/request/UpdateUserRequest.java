@@ -9,7 +9,7 @@ public class UpdateUserRequest {
     @Size(min = 2, max = 20, message = "昵称2-20字符")
     private String nickname;
 
-    private String avatar;
+    private Long avatarFileId;
 
     @Size(max = 255, message = "简介最多255字符")
     private String bio;

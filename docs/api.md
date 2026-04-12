@@ -121,7 +121,7 @@ PUT /api/user/{id}
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | nickname | string | 否 | 昵称 |
-| avatar | string | 否 | 头像URL |
+| avatarFileId | long | 否 | 头像文件ID（上传文件后获取） |
 | bio | string | 否 | 个人简介 |
 
 **返回数据**：
@@ -134,13 +134,13 @@ PUT /api/user/{id}
     "id": 1,
     "username": "user1",
     "nickname": "排球达人",
-    "avatar": "https://example.com/new-avatar.png",
+    "avatar": "http://localhost:8080/api/file/1",
     "bio": "更热爱排球了"
   }
 }
 ```
 
-**注意**：需要登录，只能修改自己的信息
+**注意**：需要登录，只能修改自己的信息。avatar 字段返回完整 URL，可直接展示
 
 ---
 
