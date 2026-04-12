@@ -3,6 +3,7 @@ package com.volleyball.volleyballcommunitybackend.controller;
 import com.volleyball.volleyballcommunitybackend.dto.response.ApiResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.PostResponse;
 import com.volleyball.volleyballcommunitybackend.service.FavoriteService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -56,8 +57,9 @@ public class FavoriteController {
     public ResponseEntity<ApiResponse<Page<PostResponse>>> getUserFavorites(
             @PathVariable("id") Long userId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        Page<PostResponse> favorites = favoriteService.getUserFavorites(userId, page, size);
+            @RequestParam(defaultValue = "10") int size,
+            HttpServletRequest request) {
+        Page<PostResponse> favorites = favoriteService.getUserFavorites(userId, page, size, request);
         return ResponseEntity.ok(ApiResponse.success(favorites));
     }
 }

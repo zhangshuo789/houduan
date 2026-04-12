@@ -12,6 +12,7 @@ import com.volleyball.volleyballcommunitybackend.repository.FavoriteRepository;
 import com.volleyball.volleyballcommunitybackend.repository.LikeRepository;
 import com.volleyball.volleyballcommunitybackend.repository.PostRepository;
 import com.volleyball.volleyballcommunitybackend.repository.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,19 +28,22 @@ public class PostService {
     private final LikeRepository likeRepository;
     private final FavoriteRepository favoriteRepository;
     private final CommentRepository commentRepository;
+    private final FileService fileService;
 
     public PostService(PostRepository postRepository, UserRepository userRepository,
                       BoardRepository boardRepository, LikeRepository likeRepository,
-                      FavoriteRepository favoriteRepository, CommentRepository commentRepository) {
+                      FavoriteRepository favoriteRepository, CommentRepository commentRepository,
+                      FileService fileService) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.boardRepository = boardRepository;
         this.likeRepository = likeRepository;
         this.favoriteRepository = favoriteRepository;
         this.commentRepository = commentRepository;
+        this.fileService = fileService;
     }
 
-    public PostResponse createPost(PostRequest request, Long userId) {
+    public PostResponse createPost(PostRequest request, Long userId, HttpServletRequest httpRequest) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
 
@@ -54,10 +58,10 @@ public class PostService {
 
         Post savedPost = postRepository.save(post);
 
-        return toPostResponse(savedPost, user, board);
+        return toPostResponse(savedPost, user, board, httpRequest);
     }
 
-    public PostDetailResponse getPostById(Long id, Long currentUserId) {
+    public PostDetailResponse getPostById(Long id, Long currentUserId, HttpServletRequest httpRequest) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("帖子不存在"));
 
@@ -74,10 +78,10 @@ public class PostService {
         Boolean liked = currentUserId != null ? likeRepository.existsByUserIdAndPostId(currentUserId, id) : null;
         Boolean favorited = currentUserId != null ? favoriteRepository.existsByUserIdAndPostId(currentUserId, id) : null;
 
-        return toPostDetailResponse(post, user, board, likeCount, favoriteCount, commentCount, liked, favorited);
+        return toPostDetailResponse(post, user, board, likeCount, favoriteCount, commentCount, liked, favorited, httpRequest);
     }
 
-    public PostResponse updatePost(Long id, PostRequest request, Long userId) {
+    public PostResponse updatePost(Long id, PostRequest request, Long userId, HttpServletRequest httpRequest) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("帖子不存在"));
 
@@ -94,7 +98,7 @@ public class PostService {
         User user = userRepository.findById(post.getUserId()).orElse(null);
         Board board = boardRepository.findById(post.getBoardId()).orElse(null);
 
-        return toPostResponse(updatedPost, user, board);
+        return toPostResponse(updatedPost, user, board, httpRequest);
     }
 
     public void deletePost(Long id, Long userId) {
@@ -108,23 +112,23 @@ public class PostService {
         postRepository.delete(post);
     }
 
-    public Page<PostResponse> getPostsByBoardId(Long boardId, int page, int size) {
+    public Page<PostResponse> getPostsByBoardId(Long boardId, int page, int size, HttpServletRequest httpRequest) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Post> posts = postRepository.findByBoardId(boardId, pageable);
 
         return posts.map(post -> {
             User user = userRepository.findById(post.getUserId()).orElse(null);
             Board board = boardRepository.findById(post.getBoardId()).orElse(null);
-            return toPostResponse(post, user, board);
+            return toPostResponse(post, user, board, httpRequest);
         });
     }
 
-    private PostResponse toPostResponse(Post post, User user, Board board) {
+    private PostResponse toPostResponse(Post post, User user, Board board, HttpServletRequest request) {
         PostResponse.UserInfo userInfo = null;
         PostResponse.BoardInfo boardInfo = null;
 
         if (user != null) {
-            userInfo = new PostResponse.UserInfo(user.getId(), user.getNickname(), user.getAvatar());
+            userInfo = new PostResponse.UserInfo(user.getId(), user.getNickname(), getAvatarUrl(user, request));
         }
         if (board != null) {
             boardInfo = new PostResponse.BoardInfo(board.getId(), board.getName());
@@ -143,12 +147,12 @@ public class PostService {
 
     private PostDetailResponse toPostDetailResponse(Post post, User user, Board board,
                                                    Long likeCount, Long favoriteCount, Long commentCount,
-                                                   Boolean liked, Boolean favorited) {
+                                                   Boolean liked, Boolean favorited, HttpServletRequest request) {
         PostResponse.UserInfo userInfo = null;
         PostResponse.BoardInfo boardInfo = null;
 
         if (user != null) {
-            userInfo = new PostResponse.UserInfo(user.getId(), user.getNickname(), user.getAvatar());
+            userInfo = new PostResponse.UserInfo(user.getId(), user.getNickname(), getAvatarUrl(user, request));
         }
         if (board != null) {
             boardInfo = new PostResponse.BoardInfo(board.getId(), board.getName());
@@ -168,5 +172,17 @@ public class PostService {
                 liked,
                 favorited
         );
+    }
+
+    private String getAvatarUrl(User user, HttpServletRequest request) {
+        if (user.getAvatar() == null || user.getAvatar().isEmpty()) {
+            return null;
+        }
+        try {
+            Long fileId = Long.parseLong(user.getAvatar());
+            return fileService.getFileUrl(fileId, request);
+        } catch (NumberFormatException e) {
+            return user.getAvatar();
+        }
     }
 }
