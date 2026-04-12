@@ -9,6 +9,7 @@ import com.volleyball.volleyballcommunitybackend.repository.BoardRepository;
 import com.volleyball.volleyballcommunitybackend.repository.FavoriteRepository;
 import com.volleyball.volleyballcommunitybackend.repository.PostRepository;
 import com.volleyball.volleyballcommunitybackend.repository.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,13 +23,16 @@ public class FavoriteService {
     private final UserRepository userRepository;
     private final PostRepository postRepository;
     private final BoardRepository boardRepository;
+    private final FileService fileService;
 
     public FavoriteService(FavoriteRepository favoriteRepository, UserRepository userRepository,
-                          PostRepository postRepository, BoardRepository boardRepository) {
+                          PostRepository postRepository, BoardRepository boardRepository,
+                          FileService fileService) {
         this.favoriteRepository = favoriteRepository;
         this.userRepository = userRepository;
         this.postRepository = postRepository;
         this.boardRepository = boardRepository;
+        this.fileService = fileService;
     }
 
     public void favorite(Long postId, Long userId) {
@@ -63,7 +67,7 @@ public class FavoriteService {
         return favoriteRepository.countByPostId(postId);
     }
 
-    public Page<PostResponse> getUserFavorites(Long userId, int page, int size) {
+    public Page<PostResponse> getUserFavorites(Long userId, int page, int size, HttpServletRequest httpRequest) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Favorite> favorites = favoriteRepository.findByUserId(userId, pageable);
 
@@ -74,16 +78,16 @@ public class FavoriteService {
             }
             User user = userRepository.findById(post.getUserId()).orElse(null);
             Board board = boardRepository.findById(post.getBoardId()).orElse(null);
-            return toPostResponse(post, user, board);
+            return toPostResponse(post, user, board, httpRequest);
         });
     }
 
-    private PostResponse toPostResponse(Post post, User user, Board board) {
+    private PostResponse toPostResponse(Post post, User user, Board board, HttpServletRequest request) {
         PostResponse.UserInfo userInfo = null;
         PostResponse.BoardInfo boardInfo = null;
 
         if (user != null) {
-            userInfo = new PostResponse.UserInfo(user.getId(), user.getNickname(), user.getAvatar());
+            userInfo = new PostResponse.UserInfo(user.getId(), user.getNickname(), getAvatarUrl(user, request));
         }
         if (board != null) {
             boardInfo = new PostResponse.BoardInfo(board.getId(), board.getName());
@@ -98,5 +102,17 @@ public class FavoriteService {
                 post.getCreatedAt(),
                 post.getUpdatedAt()
         );
+    }
+
+    private String getAvatarUrl(User user, HttpServletRequest request) {
+        if (user.getAvatar() == null || user.getAvatar().isEmpty()) {
+            return null;
+        }
+        try {
+            Long fileId = Long.parseLong(user.getAvatar());
+            return fileService.getFileUrl(fileId, request);
+        } catch (NumberFormatException e) {
+            return user.getAvatar();
+        }
     }
 }
