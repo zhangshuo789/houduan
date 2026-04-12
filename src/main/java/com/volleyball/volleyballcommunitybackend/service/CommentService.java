@@ -15,9 +15,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 @Service
 public class CommentService {
 
@@ -60,23 +57,16 @@ public class CommentService {
         return toCommentResponse(saved, user, httpRequest);
     }
 
+    /**
+     * 扁平返回所有评论，前端自行根据parentId渲染树形结构
+     */
     public Page<CommentResponse> getComments(Long postId, int page, int size, HttpServletRequest httpRequest) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<Comment> topLevelComments = commentRepository.findByPostIdAndParentIdIsNull(postId, pageable);
+        Page<Comment> comments = commentRepository.findByPostId(postId, pageable);
 
-        return topLevelComments.map(comment -> {
+        return comments.map(comment -> {
             User user = userRepository.findById(comment.getUserId()).orElse(null);
-            List<Comment> replies = commentRepository.findByParentId(comment.getId());
-            List<CommentResponse> replyResponses = replies.stream()
-                    .map(reply -> {
-                        User replyUser = userRepository.findById(reply.getUserId()).orElse(null);
-                        return toCommentResponse(reply, replyUser, httpRequest);
-                    })
-                    .collect(Collectors.toList());
-
-            CommentResponse response = toCommentResponse(comment, user, httpRequest);
-            response.setReplies(replyResponses);
-            return response;
+            return toCommentResponse(comment, user, httpRequest);
         });
     }
 
@@ -101,8 +91,7 @@ public class CommentService {
                 comment.getContent(),
                 userInfo,
                 comment.getParentId(),
-                comment.getCreatedAt(),
-                null
+                comment.getCreatedAt()
         );
     }
 
