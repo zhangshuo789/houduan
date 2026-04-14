@@ -109,6 +109,10 @@ public class FollowService {
         return friendshipRepository.countByUserId(userId);
     }
 
+    public Page<Follow> getFollowingForFeed(Long userId, Pageable pageable) {
+        return followRepository.findByFollowerId(userId, pageable);
+    }
+
     private UserResponse toUserResponse(Long targetUserId) {
         User user = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new RuntimeException("用户不存在"));

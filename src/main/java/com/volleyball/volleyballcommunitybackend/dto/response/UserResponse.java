@@ -15,4 +15,5 @@ public class UserResponse {
     private String avatar;
     private String bio;
     private LocalDateTime createdAt;
+    private UserStatsResponse stats;
 }
