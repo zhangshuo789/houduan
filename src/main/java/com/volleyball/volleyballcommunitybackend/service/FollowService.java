@@ -122,7 +122,8 @@ public class FollowService {
                 user.getNickname(),
                 user.getAvatar(),
                 user.getBio(),
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                null
         );
     }
 }
