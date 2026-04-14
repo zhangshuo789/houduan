@@ -1,25 +1,23 @@
 package com.volleyball.volleyballcommunitybackend.repository;
 
-import com.volleyball.volleyballcommunitybackend.entity.MessageRead;
+import com.volleyball.volleyballcommunitybackend.entity.GroupMember;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface MessageReadRepository extends JpaRepository<MessageRead, Long> {
+public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> {
 
-    Optional<MessageRead> findByMessageIdAndUserId(Long messageId, Long userId);
+    Optional<GroupMember> findByGroupIdAndUserId(Long groupId, Long userId);
 
-    List<MessageRead> findByUserId(Long userId);
+    List<GroupMember> findByGroupId(Long groupId);
 
-    long countByUserIdAndReadAtIsNull(Long userId);
+    List<GroupMember> findByUserId(Long userId);
 
-    @Modifying
-    @Query("UPDATE MessageRead mr SET mr.readAt = :readAt WHERE mr.userId = :userId AND mr.messageId IN :messageIds AND mr.readAt IS NULL")
-    int batchMarkAsRead(@Param("userId") Long userId, @Param("messageIds") List<Long> messageIds, @Param("readAt") LocalDateTime readAt);
+    boolean existsByGroupIdAndUserId(Long groupId, Long userId);
+
+    long countByGroupId(Long groupId);
+
+    void deleteByGroupIdAndUserId(Long groupId, Long userId);
 }

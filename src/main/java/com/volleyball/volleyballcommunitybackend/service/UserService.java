@@ -89,7 +89,7 @@ public class UserService {
                             .orElseThrow(() -> new RuntimeException("用户不存在"));
                     feed.setUser(new UserResponse(
                             user.getId(), user.getUsername(), user.getNickname(),
-                            user.getAvatar(), user.getBio(), user.getCreatedAt()
+                            user.getAvatar(), user.getBio(), user.getCreatedAt(), null
                     ));
                     return feed;
                 });
