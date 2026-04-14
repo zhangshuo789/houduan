@@ -9,6 +9,7 @@ import com.volleyball.volleyballcommunitybackend.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
@@ -17,14 +18,18 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final FileService fileService;
+    private final PrivacyService privacyService;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, FileService fileService) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
+                       FileService fileService, PrivacyService privacyService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.fileService = fileService;
+        this.privacyService = privacyService;
     }
 
+    @Transactional
     public User register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new RuntimeException("用户名已存在");
@@ -35,7 +40,12 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setNickname(request.getNickname());
 
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+
+        // 创建默认隐私设置
+        privacyService.getOrCreatePrivacySettings(saved.getId());
+
+        return saved;
     }
 
     public LoginResponse login(LoginRequest request, HttpServletRequest httpRequest) {
