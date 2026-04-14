@@ -118,6 +118,67 @@
 | user_id | BIGINT | 上传用户ID |
 | created_at | DATETIME | 创建时间 |
 
+#### Follow 关注表
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键 |
+| follower_id | BIGINT | 关注者ID |
+| followee_id | BIGINT | 被关注者ID |
+| created_at | DATETIME | 创建时间 |
+
+**约束**：follower_id + followee_id 唯一
+
+#### Friendship 好友表
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键 |
+| user_id | BIGINT | 用户ID |
+| friend_id | BIGINT | 好友ID |
+| created_at | DATETIME | 创建时间 |
+
+**约束**：user_id + friend_id 唯一
+
+#### UserPrivacy 隐私设置表
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键 |
+| user_id | BIGINT | 用户ID（唯一） |
+| follow_list_visible | BOOLEAN | 关注列表是否可见 |
+| follower_list_visible | BOOLEAN | 粉丝列表是否可见 |
+| friends_only_receive | BOOLEAN | 是否仅接收好友消息 |
+
+#### Message 消息表
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键 |
+| sender_id | BIGINT | 发送者ID |
+| type | VARCHAR(20) | 消息类型（private/group） |
+| target_id | BIGINT | 接收者ID或群ID |
+| content | TEXT | 消息内容 |
+| created_at | DATETIME | 创建时间 |
+
+#### MessageRead 消息已读表
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键 |
+| message_id | BIGINT | 消息ID |
+| user_id | BIGINT | 用户ID |
+| read_at | DATETIME | 已读时间（为空表示未读） |
+
+**约束**：message_id + user_id 唯一
+
+#### GroupMember 群成员表
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键 |
+| group_id | BIGINT | 群ID |
+| user_id | BIGINT | 用户ID |
+| role | VARCHAR(20) | 角色（OWNER/ADMIN/MEMBER） |
+| banned | BOOLEAN | 是否被禁言 |
+| joined_at | DATETIME | 加入时间 |
+
+**约束**：group_id + user_id 唯一
+
 ---
 
 ## 安全机制
@@ -342,9 +403,13 @@ LogUtils.clearMdc();
 - [x] 文件访问（返回完整URL）
 - [x] 本地存储策略
 
-### 阶段三：社交功能 🔄 待开发
-- [ ] 关注/粉丝（follow）
-- [ ] 私信（message）
+### 阶段三：社交功能 ✅ 已完成
+- [x] 关注/粉丝（follow）
+- [x] 好友关系（friendship）
+- [x] 隐私设置（privacy）
+- [x] 私信（message）
+- [x] 群聊（group）
+- [x] SSE实时推送
 
 ### 阶段四：赛事日历 🔄 待开发
 - [ ] 赛事发布（event）

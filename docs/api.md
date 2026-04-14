@@ -891,3 +891,393 @@ GET /api/file/{id}/url
 | 403 | 无权限 |
 | 404 | 资源不存在 |
 | 500 | 服务器内部错误 |
+---
+
+## 关注/粉丝模块 /api/follow
+
+### 关注用户
+
+```
+POST /api/follow/{userId}
+```
+
+**路径参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| userId | long | 被关注用户ID |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "关注成功",
+  "data": null
+}
+```
+
+**注意**：需要登录
+
+---
+
+### 取消关注
+
+```
+DELETE /api/follow/{userId}
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "取消关注成功",
+  "data": null
+}
+```
+
+---
+
+### 获取关注状态
+
+```
+GET /api/follow/{userId}/status
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "following": true,
+    "followedBy": false,
+    "mutualFollow": false
+  }
+}
+```
+
+---
+
+### 获取用户关注列表
+
+```
+GET /api/user/{userId}/following
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "content": [...],
+    "totalElements": 100,
+    "totalPages": 10
+  }
+}
+```
+
+---
+
+### 获取用户粉丝列表
+
+```
+GET /api/user/{userId}/followers
+```
+
+---
+
+### 获取互关好友列表
+
+```
+GET /api/user/{userId}/friends
+```
+
+---
+
+## 私信模块 /api/message
+
+### 获取会话列表
+
+```
+GET /api/message/conversations
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "content": [
+      {
+        "oderId": 2,
+        "oderNickname": "用户2",
+        "oderAvatar": "...",
+        "lastMessage": "你好",
+        "lastMessageTime": "2026-04-01T10:00:00",
+        "unreadCount": 5
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 获取与用户的私聊消息
+
+```
+GET /api/message/private/{userId}
+```
+
+---
+
+### 发送私信
+
+```
+POST /api/message/private/{userId}
+```
+
+**请求数据**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| content | string | 是 | 消息内容 |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "发送成功",
+  "data": {
+    "id": 1,
+    "senderId": 1,
+    "senderNickname": "用户1",
+    "content": "你好",
+    "createdAt": "2026-04-01T10:00:00",
+    "isRead": false
+  }
+}
+```
+
+---
+
+### 标记消息已读
+
+```
+POST /api/message/read
+```
+
+**请求数据**：
+
+```json
+{
+  "conversationWithUserId": 2
+}
+```
+
+---
+
+### 获取未读消息数
+
+```
+GET /api/message/unread-count
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "totalUnread": 10
+  }
+}
+```
+
+---
+
+## 群聊模块 /api/group
+
+### 创建群聊
+
+```
+POST /api/group
+```
+
+**请求数据**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | string | 是 | 群名称 |
+| description | string | 否 | 群描述 |
+| memberIds | array | 是 | 成员ID列表 |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {
+    "id": 1,
+    "name": "排球群",
+    "description": "",
+    "type": "group",
+    "memberCount": 3,
+    "createdAt": "2026-04-01T10:00:00"
+  }
+}
+```
+
+---
+
+### 获取群信息
+
+```
+GET /api/group/{id}
+```
+
+---
+
+### 获取群成员列表
+
+```
+GET /api/group/{id}/members
+```
+
+---
+
+### 添加群成员
+
+```
+POST /api/group/{id}/members?userId={userId}
+```
+
+---
+
+### 移除群成员
+
+```
+DELETE /api/group/{id}/members/{userId}
+```
+
+---
+
+### 退群
+
+```
+POST /api/group/{id}/members/{userId}/leave
+```
+
+---
+
+### 禁言成员
+
+```
+POST /api/group/{id}/ban/{userId}
+```
+
+---
+
+### 解除禁言
+
+```
+DELETE /api/group/{id}/unban/{userId}
+```
+
+---
+
+### 获取群聊消息
+
+```
+GET /api/group/{id}/messages
+```
+
+---
+
+### 发送群消息
+
+```
+POST /api/group/{id}/messages
+```
+
+**请求数据**：
+
+```json
+{
+  "content": "大家好"
+}
+```
+
+---
+
+## SSE 实时推送 /api/sse
+
+### 建立连接
+
+```
+GET /api/sse/connect
+```
+
+**返回**：SSE事件流，支持 `newMessage` 和 `newGroupMessage` 事件类型
+
+---
+
+## 用户统计 /api/user
+
+### 获取用户统计
+
+```
+GET /api/user/{id}/stats
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "followCount": 100,
+    "followerCount": 50,
+    "postCount": 30,
+    "friendCount": 20
+  }
+}
+```
+
+---
+
+### 获取用户动态流
+
+```
+GET /api/user/{id}/feed
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "content": [
+      {
+        "postId": 1,
+        "title": "帖子标题",
+        "user": {...},
+        "createdAt": "2026-04-01T10:00:00"
+      }
+    ]
+  }
+}
+```
