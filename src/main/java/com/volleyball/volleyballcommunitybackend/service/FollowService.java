@@ -6,6 +6,7 @@ import com.volleyball.volleyballcommunitybackend.entity.Follow;
 import com.volleyball.volleyballcommunitybackend.entity.Friendship;
 import com.volleyball.volleyballcommunitybackend.entity.User;
 import com.volleyball.volleyballcommunitybackend.repository.*;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -19,15 +20,17 @@ public class FollowService {
     private final UserRepository userRepository;
     private final PostRepository postRepository;
     private final PrivacyService privacyService;
+    private final FileService fileService;
 
     public FollowService(FollowRepository followRepository, FriendshipRepository friendshipRepository,
                          UserRepository userRepository, PostRepository postRepository,
-                         PrivacyService privacyService) {
+                         PrivacyService privacyService, FileService fileService) {
         this.followRepository = followRepository;
         this.friendshipRepository = friendshipRepository;
         this.userRepository = userRepository;
         this.postRepository = postRepository;
         this.privacyService = privacyService;
+        this.fileService = fileService;
     }
 
     @Transactional
@@ -76,25 +79,25 @@ public class FollowService {
         return new FollowStatusResponse(following, followedBy, mutualFollow);
     }
 
-    public Page<UserResponse> getFollowingList(Long userId, Long viewerId, Pageable pageable) {
+    public Page<UserResponse> getFollowingList(Long userId, Long viewerId, Pageable pageable, HttpServletRequest request) {
         if (!privacyService.isFollowListVisible(userId, viewerId)) {
             return Page.empty();
         }
         return followRepository.findByFollowerId(userId, pageable)
-                .map(f -> toUserResponse(f.getFolloweeId()));
+                .map(f -> toUserResponse(f.getFolloweeId(), request));
     }
 
-    public Page<UserResponse> getFollowerList(Long userId, Long viewerId, Pageable pageable) {
+    public Page<UserResponse> getFollowerList(Long userId, Long viewerId, Pageable pageable, HttpServletRequest request) {
         if (!privacyService.isFollowerListVisible(userId, viewerId)) {
             return Page.empty();
         }
         return followRepository.findByFolloweeId(userId, pageable)
-                .map(f -> toUserResponse(f.getFollowerId()));
+                .map(f -> toUserResponse(f.getFollowerId(), request));
     }
 
-    public Page<UserResponse> getFriendsList(Long userId, Pageable pageable) {
+    public Page<UserResponse> getFriendsList(Long userId, Pageable pageable, HttpServletRequest request) {
         return friendshipRepository.findByUserId(userId, pageable)
-                .map(f -> toUserResponse(f.getFriendId()));
+                .map(f -> toUserResponse(f.getFriendId(), request));
     }
 
     public long getFollowCount(Long userId) {
@@ -113,17 +116,29 @@ public class FollowService {
         return followRepository.findByFollowerId(userId, pageable);
     }
 
-    private UserResponse toUserResponse(Long targetUserId) {
+    private UserResponse toUserResponse(Long targetUserId, HttpServletRequest request) {
         User user = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
         return new UserResponse(
                 user.getId(),
                 user.getUsername(),
                 user.getNickname(),
-                user.getAvatar(),
+                getAvatarUrl(user, request),
                 user.getBio(),
                 user.getCreatedAt(),
                 null
         );
+    }
+
+    private String getAvatarUrl(User user, HttpServletRequest request) {
+        if (user.getAvatar() == null || user.getAvatar().isEmpty()) {
+            return null;
+        }
+        try {
+            Long fileId = Long.parseLong(user.getAvatar());
+            return fileService.getFileUrl(fileId, request);
+        } catch (NumberFormatException e) {
+            return user.getAvatar();
+        }
     }
 }

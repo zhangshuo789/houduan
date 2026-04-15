@@ -4,6 +4,7 @@ import com.volleyball.volleyballcommunitybackend.dto.response.ApiResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.FollowStatusResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.UserResponse;
 import com.volleyball.volleyballcommunitybackend.service.FollowService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -50,9 +51,10 @@ public class FollowController {
     public ResponseEntity<ApiResponse<Page<UserResponse>>> getFollowingList(
             @PathVariable Long userId,
             Authentication authentication,
-            Pageable pageable) {
+            Pageable pageable,
+            HttpServletRequest request) {
         Long currentUserId = (Long) authentication.getPrincipal();
-        Page<UserResponse> list = followService.getFollowingList(userId, currentUserId, pageable);
+        Page<UserResponse> list = followService.getFollowingList(userId, currentUserId, pageable, request);
         return ResponseEntity.ok(ApiResponse.success(list));
     }
 
@@ -60,17 +62,19 @@ public class FollowController {
     public ResponseEntity<ApiResponse<Page<UserResponse>>> getFollowerList(
             @PathVariable Long userId,
             Authentication authentication,
-            Pageable pageable) {
+            Pageable pageable,
+            HttpServletRequest request) {
         Long currentUserId = (Long) authentication.getPrincipal();
-        Page<UserResponse> list = followService.getFollowerList(userId, currentUserId, pageable);
+        Page<UserResponse> list = followService.getFollowerList(userId, currentUserId, pageable, request);
         return ResponseEntity.ok(ApiResponse.success(list));
     }
 
     @GetMapping("/api/user/{userId}/friends")
     public ResponseEntity<ApiResponse<Page<UserResponse>>> getFriendsList(
             @PathVariable Long userId,
-            Pageable pageable) {
-        Page<UserResponse> list = followService.getFriendsList(userId, pageable);
+            Pageable pageable,
+            HttpServletRequest request) {
+        Page<UserResponse> list = followService.getFriendsList(userId, pageable, request);
         return ResponseEntity.ok(ApiResponse.success(list));
     }
 }
