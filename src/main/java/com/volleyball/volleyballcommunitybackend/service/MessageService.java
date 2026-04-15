@@ -9,6 +9,7 @@ import com.volleyball.volleyballcommunitybackend.entity.Message;
 import com.volleyball.volleyballcommunitybackend.entity.MessageRead;
 import com.volleyball.volleyballcommunitybackend.entity.User;
 import com.volleyball.volleyballcommunitybackend.repository.*;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -28,20 +29,22 @@ public class MessageService {
     private final FollowRepository followRepository;
     private final SseService sseService;
     private final PrivacyService privacyService;
+    private final FileService fileService;
 
     public MessageService(MessageRepository messageRepository, MessageReadRepository messageReadRepository,
                           UserRepository userRepository, FollowRepository followRepository,
-                          SseService sseService, PrivacyService privacyService) {
+                          SseService sseService, PrivacyService privacyService, FileService fileService) {
         this.messageRepository = messageRepository;
         this.messageReadRepository = messageReadRepository;
         this.userRepository = userRepository;
         this.followRepository = followRepository;
         this.sseService = sseService;
         this.privacyService = privacyService;
+        this.fileService = fileService;
     }
 
     @Transactional
-    public MessageResponse sendMessage(Long senderId, Long receiverId, MessageRequest request) {
+    public MessageResponse sendMessage(Long senderId, Long receiverId, MessageRequest request, HttpServletRequest httpRequest) {
         if (senderId.equals(receiverId)) {
             throw new RuntimeException("不能给自己发消息");
         }
@@ -78,7 +81,7 @@ public class MessageService {
         receiverRead.setUserId(receiverId);
         messageReadRepository.save(receiverRead);
 
-        MessageResponse response = toMessageResponse(saved);
+        MessageResponse response = toMessageResponse(saved, httpRequest);
 
         // SSE推送
         sseService.sendMessageToUser(receiverId, "newMessage", response);
@@ -86,7 +89,7 @@ public class MessageService {
         return response;
     }
 
-    public Page<ConversationResponse> getConversations(Long userId, Pageable pageable) {
+    public Page<ConversationResponse> getConversations(Long userId, Pageable pageable, HttpServletRequest request) {
         Page<Long> conversationUserIds = messageRepository.findPrivateConversationUserIds(userId, pageable);
 
         return conversationUserIds.map(otherUserId -> {
@@ -101,7 +104,7 @@ public class MessageService {
             ConversationResponse conversation = new ConversationResponse();
             conversation.setOderId(otherUser.getId());
             conversation.setOderNickname(otherUser.getNickname());
-            conversation.setOderAvatar(otherUser.getAvatar());
+            conversation.setOderAvatar(getAvatarUrl(otherUser, request));
             conversation.setLastMessage(lastMessage != null ? lastMessage.getContent() : "");
             conversation.setLastMessageTime(lastMessage != null ? lastMessage.getCreatedAt() : null);
             conversation.setUnreadCount((int) unreadCount);
@@ -109,9 +112,9 @@ public class MessageService {
         });
     }
 
-    public Page<MessageResponse> getPrivateMessages(Long userId, Long otherUserId, Pageable pageable) {
+    public Page<MessageResponse> getPrivateMessages(Long userId, Long otherUserId, Pageable pageable, HttpServletRequest request) {
         return messageRepository.findPrivateMessages(userId, otherUserId, pageable)
-                .map(this::toMessageResponse);
+                .map(message -> toMessageResponse(message, request));
     }
 
     @Transactional
@@ -139,7 +142,7 @@ public class MessageService {
         return new UnreadCountResponse(count);
     }
 
-    private MessageResponse toMessageResponse(Message message) {
+    private MessageResponse toMessageResponse(Message message, HttpServletRequest request) {
         User sender = userRepository.findById(message.getSenderId())
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
 
@@ -151,12 +154,24 @@ public class MessageService {
                 message.getId(),
                 sender.getId(),
                 sender.getNickname(),
-                sender.getAvatar(),
+                getAvatarUrl(sender, request),
                 message.getType(),
                 message.getTargetId(),
                 message.getContent(),
                 message.getCreatedAt(),
                 isRead
         );
+    }
+
+    private String getAvatarUrl(User user, HttpServletRequest request) {
+        if (user.getAvatar() == null || user.getAvatar().isEmpty()) {
+            return null;
+        }
+        try {
+            Long fileId = Long.parseLong(user.getAvatar());
+            return fileService.getFileUrl(fileId, request);
+        } catch (NumberFormatException e) {
+            return user.getAvatar();
+        }
     }
 }

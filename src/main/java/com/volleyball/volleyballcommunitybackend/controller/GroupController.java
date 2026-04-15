@@ -7,6 +7,7 @@ import com.volleyball.volleyballcommunitybackend.dto.response.GroupMemberRespons
 import com.volleyball.volleyballcommunitybackend.dto.response.GroupResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.MessageResponse;
 import com.volleyball.volleyballcommunitybackend.service.GroupService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -41,8 +42,10 @@ public class GroupController {
     }
 
     @GetMapping("/api/group/{id}/members")
-    public ResponseEntity<ApiResponse<List<GroupMemberResponse>>> getGroupMembers(@PathVariable Long id) {
-        List<GroupMemberResponse> members = groupService.getGroupMembers(id);
+    public ResponseEntity<ApiResponse<List<GroupMemberResponse>>> getGroupMembers(
+            @PathVariable Long id,
+            HttpServletRequest request) {
+        List<GroupMemberResponse> members = groupService.getGroupMembers(id, request);
         return ResponseEntity.ok(ApiResponse.success(members));
     }
 
@@ -98,8 +101,9 @@ public class GroupController {
     @GetMapping("/api/group/{id}/messages")
     public ResponseEntity<ApiResponse<Page<MessageResponse>>> getGroupMessages(
             @PathVariable Long id,
-            Pageable pageable) {
-        Page<MessageResponse> messages = groupService.getGroupMessages(id, pageable);
+            Pageable pageable,
+            HttpServletRequest request) {
+        Page<MessageResponse> messages = groupService.getGroupMessages(id, pageable, request);
         return ResponseEntity.ok(ApiResponse.success(messages));
     }
 
@@ -107,9 +111,10 @@ public class GroupController {
     public ResponseEntity<ApiResponse<MessageResponse>> sendGroupMessage(
             @PathVariable Long id,
             @Valid @RequestBody MessageRequest request,
-            Authentication authentication) {
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
         Long currentUserId = (Long) authentication.getPrincipal();
-        MessageResponse message = groupService.sendGroupMessage(currentUserId, id, request);
+        MessageResponse message = groupService.sendGroupMessage(currentUserId, id, request, httpRequest);
         return ResponseEntity.ok(ApiResponse.success("发送成功", message));
     }
 }

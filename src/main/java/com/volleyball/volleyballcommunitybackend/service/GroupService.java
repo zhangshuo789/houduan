@@ -10,6 +10,7 @@ import com.volleyball.volleyballcommunitybackend.entity.Message;
 import com.volleyball.volleyballcommunitybackend.entity.MessageRead;
 import com.volleyball.volleyballcommunitybackend.entity.User;
 import com.volleyball.volleyballcommunitybackend.repository.*;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -27,15 +28,17 @@ public class GroupService {
     private final GroupMemberRepository groupMemberRepository;
     private final UserRepository userRepository;
     private final SseService sseService;
+    private final FileService fileService;
 
     public GroupService(MessageRepository messageRepository, MessageReadRepository messageReadRepository,
                         GroupMemberRepository groupMemberRepository, UserRepository userRepository,
-                        SseService sseService) {
+                        SseService sseService, FileService fileService) {
         this.messageRepository = messageRepository;
         this.messageReadRepository = messageReadRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.userRepository = userRepository;
         this.sseService = sseService;
+        this.fileService = fileService;
     }
 
     @Transactional
@@ -98,9 +101,9 @@ public class GroupService {
         return response;
     }
 
-    public List<GroupMemberResponse> getGroupMembers(Long groupId) {
+    public List<GroupMemberResponse> getGroupMembers(Long groupId, HttpServletRequest request) {
         return groupMemberRepository.findByGroupId(groupId).stream()
-                .map(this::toGroupMemberResponse)
+                .map(member -> toGroupMemberResponse(member, request))
                 .collect(Collectors.toList());
     }
 
@@ -185,7 +188,7 @@ public class GroupService {
     }
 
     @Transactional
-    public MessageResponse sendGroupMessage(Long senderId, Long groupId, MessageRequest request) {
+    public MessageResponse sendGroupMessage(Long senderId, Long groupId, MessageRequest request, HttpServletRequest httpRequest) {
         GroupMember member = groupMemberRepository.findByGroupIdAndUserId(groupId, senderId)
                 .orElseThrow(() -> new RuntimeException("你不是群成员"));
 
@@ -210,7 +213,7 @@ public class GroupService {
             messageReadRepository.save(read);
         }
 
-        MessageResponse response = toMessageResponse(saved);
+        MessageResponse response = toMessageResponse(saved, httpRequest);
 
         // 推送给所有在线群成员
         for (GroupMember m : members) {
@@ -222,26 +225,26 @@ public class GroupService {
         return response;
     }
 
-    public Page<MessageResponse> getGroupMessages(Long groupId, Pageable pageable) {
+    public Page<MessageResponse> getGroupMessages(Long groupId, Pageable pageable, HttpServletRequest request) {
         return messageRepository.findByTypeAndTargetIdOrderByCreatedAtDesc("group", groupId, pageable)
-                .map(this::toMessageResponse);
+                .map(message -> toMessageResponse(message, request));
     }
 
-    private GroupMemberResponse toGroupMemberResponse(GroupMember member) {
+    private GroupMemberResponse toGroupMemberResponse(GroupMember member, HttpServletRequest request) {
         User user = userRepository.findById(member.getUserId())
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
 
         GroupMemberResponse response = new GroupMemberResponse();
         response.setUserId(user.getId());
         response.setNickname(user.getNickname());
-        response.setAvatar(user.getAvatar());
+        response.setAvatar(getAvatarUrl(user, request));
         response.setRole(member.getRole());
         response.setBanned(member.getBanned());
         response.setJoinedAt(member.getJoinedAt());
         return response;
     }
 
-    private MessageResponse toMessageResponse(Message message) {
+    private MessageResponse toMessageResponse(Message message, HttpServletRequest request) {
         User sender = userRepository.findById(message.getSenderId())
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
 
@@ -249,12 +252,24 @@ public class GroupService {
                 message.getId(),
                 sender.getId(),
                 sender.getNickname(),
-                sender.getAvatar(),
+                getAvatarUrl(sender, request),
                 message.getType(),
                 message.getTargetId(),
                 message.getContent(),
                 message.getCreatedAt(),
                 true
         );
+    }
+
+    private String getAvatarUrl(User user, HttpServletRequest request) {
+        if (user.getAvatar() == null || user.getAvatar().isEmpty()) {
+            return null;
+        }
+        try {
+            Long fileId = Long.parseLong(user.getAvatar());
+            return fileService.getFileUrl(fileId, request);
+        } catch (NumberFormatException e) {
+            return user.getAvatar();
+        }
     }
 }

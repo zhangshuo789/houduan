@@ -55,8 +55,9 @@ public class UserController {
     @GetMapping("/{id}/feed")
     public ResponseEntity<ApiResponse<Page<FeedResponse>>> getUserFeed(
             @PathVariable Long id,
-            Pageable pageable) {
-        Page<FeedResponse> feed = userService.getUserFeed(id, pageable);
+            Pageable pageable,
+            HttpServletRequest request) {
+        Page<FeedResponse> feed = userService.getUserFeed(id, pageable, request);
         return ResponseEntity.ok(ApiResponse.success(feed));
     }
 }

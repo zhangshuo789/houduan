@@ -7,6 +7,7 @@ import com.volleyball.volleyballcommunitybackend.dto.response.ConversationRespon
 import com.volleyball.volleyballcommunitybackend.dto.response.MessageResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.UnreadCountResponse;
 import com.volleyball.volleyballcommunitybackend.service.MessageService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,9 +27,10 @@ public class MessageController {
     @GetMapping("/api/message/conversations")
     public ResponseEntity<ApiResponse<Page<ConversationResponse>>> getConversations(
             Authentication authentication,
-            Pageable pageable) {
+            Pageable pageable,
+            HttpServletRequest request) {
         Long currentUserId = (Long) authentication.getPrincipal();
-        Page<ConversationResponse> conversations = messageService.getConversations(currentUserId, pageable);
+        Page<ConversationResponse> conversations = messageService.getConversations(currentUserId, pageable, request);
         return ResponseEntity.ok(ApiResponse.success(conversations));
     }
 
@@ -36,9 +38,10 @@ public class MessageController {
     public ResponseEntity<ApiResponse<Page<MessageResponse>>> getPrivateMessages(
             @PathVariable Long userId,
             Authentication authentication,
-            Pageable pageable) {
+            Pageable pageable,
+            HttpServletRequest request) {
         Long currentUserId = (Long) authentication.getPrincipal();
-        Page<MessageResponse> messages = messageService.getPrivateMessages(currentUserId, userId, pageable);
+        Page<MessageResponse> messages = messageService.getPrivateMessages(currentUserId, userId, pageable, request);
         return ResponseEntity.ok(ApiResponse.success(messages));
     }
 
@@ -46,9 +49,10 @@ public class MessageController {
     public ResponseEntity<ApiResponse<MessageResponse>> sendMessage(
             @PathVariable Long userId,
             @Valid @RequestBody MessageRequest request,
-            Authentication authentication) {
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
         Long currentUserId = (Long) authentication.getPrincipal();
-        MessageResponse message = messageService.sendMessage(currentUserId, userId, request);
+        MessageResponse message = messageService.sendMessage(currentUserId, userId, request, httpRequest);
         return ResponseEntity.ok(ApiResponse.success("发送成功", message));
     }
 

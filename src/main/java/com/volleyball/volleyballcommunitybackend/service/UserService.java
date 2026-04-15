@@ -67,7 +67,7 @@ public class UserService {
         return new UserStatsResponse(followCount, followerCount, postCount, friendCount);
     }
 
-    public Page<FeedResponse> getUserFeed(Long userId, Pageable pageable) {
+    public Page<FeedResponse> getUserFeed(Long userId, Pageable pageable, HttpServletRequest request) {
         // 查询该用户关注的人的帖子
         Page<Follow> following = followService.getFollowingForFeed(userId, pageable);
         List<Long> followingIds = following.getContent().stream()
@@ -87,25 +87,17 @@ public class UserService {
                     feed.setCreatedAt(post.getCreatedAt());
                     User user = userRepository.findById(post.getUserId())
                             .orElseThrow(() -> new RuntimeException("用户不存在"));
+                    String avatarUrl = getAvatarUrl(user, request);
                     feed.setUser(new UserResponse(
                             user.getId(), user.getUsername(), user.getNickname(),
-                            user.getAvatar(), user.getBio(), user.getCreatedAt(), null
+                            avatarUrl, user.getBio(), user.getCreatedAt(), null
                     ));
                     return feed;
                 });
     }
 
     private UserResponse toUserResponse(User user, HttpServletRequest request) {
-        String avatarUrl = null;
-        if (user.getAvatar() != null && !user.getAvatar().isEmpty()) {
-            try {
-                Long fileId = Long.parseLong(user.getAvatar());
-                avatarUrl = fileService.getFileUrl(fileId, request);
-            } catch (NumberFormatException e) {
-                avatarUrl = user.getAvatar();
-            }
-        }
-
+        String avatarUrl = getAvatarUrl(user, request);
         UserStatsResponse stats = getUserStats(user.getId());
 
         return new UserResponse(
@@ -117,5 +109,17 @@ public class UserService {
                 user.getCreatedAt(),
                 stats
         );
+    }
+
+    private String getAvatarUrl(User user, HttpServletRequest request) {
+        if (user.getAvatar() == null || user.getAvatar().isEmpty()) {
+            return null;
+        }
+        try {
+            Long fileId = Long.parseLong(user.getAvatar());
+            return fileService.getFileUrl(fileId, request);
+        } catch (NumberFormatException e) {
+            return user.getAvatar();
+        }
     }
 }
