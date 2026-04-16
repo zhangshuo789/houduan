@@ -38,6 +38,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(JwtAuthenticationFilter jwtAuthenticationFilter, HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
+           .cors(cors -> {})  // 启用 CORS
            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
            .exceptionHandling(ex -> ex
                    .authenticationEntryPoint(new HttpStatusEntryPoint())
@@ -51,7 +52,7 @@ public class SecurityConfig {
                    .requestMatchers("/api/follow/**").authenticated()
                    .requestMatchers("/api/message/**").authenticated()
                    .requestMatchers("/api/group/**").authenticated()
-                   .requestMatchers("/api/sse/**").authenticated()
+                   .requestMatchers("/api/sse/connect").permitAll()
                    .requestMatchers(HttpMethod.GET, "/api/user/*/following").permitAll()
                    .requestMatchers(HttpMethod.GET, "/api/user/*/followers").permitAll()
                    .requestMatchers(HttpMethod.GET, "/api/user/*/friends").permitAll()
