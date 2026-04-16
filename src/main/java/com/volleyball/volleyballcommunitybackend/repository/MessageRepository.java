@@ -23,8 +23,14 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     Page<Message> findByTypeAndTargetIdOrderByCreatedAtDesc(String type, Long targetId, Pageable pageable);
 
     // 查询用户参与的所有私聊会话（按最新消息排序）
-    @Query("SELECT DISTINCT CASE WHEN m.senderId = :userId THEN m.targetId ELSE m.senderId END " +
-           "FROM Message m WHERE m.type = 'private' AND (m.senderId = :userId OR m.targetId = :userId) " +
-           "ORDER BY m.createdAt DESC")
+    // MySQL requires ORDER BY columns to be in SELECT when using DISTINCT, using native query
+    @Query(value = "SELECT other_user_id FROM (" +
+           "SELECT DISTINCT CASE WHEN sender_id = :userId THEN target_id ELSE sender_id END AS other_user_id " +
+           "FROM message WHERE type = 'private' AND (sender_id = :userId OR target_id = :userId) " +
+           "ORDER BY created_at DESC" +
+           ") AS sub ORDER BY created_at DESC",
+           countQuery = "SELECT COUNT(DISTINCT CASE WHEN sender_id = :userId THEN target_id ELSE sender_id END) " +
+           "FROM message WHERE type = 'private' AND (sender_id = :userId OR target_id = :userId)",
+           nativeQuery = true)
     Page<Long> findPrivateConversationUserIds(@Param("userId") Long userId, Pageable pageable);
 }
