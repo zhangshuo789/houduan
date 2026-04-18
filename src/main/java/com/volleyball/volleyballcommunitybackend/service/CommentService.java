@@ -8,6 +8,7 @@ import com.volleyball.volleyballcommunitybackend.entity.User;
 import com.volleyball.volleyballcommunitybackend.repository.CommentRepository;
 import com.volleyball.volleyballcommunitybackend.repository.PostRepository;
 import com.volleyball.volleyballcommunitybackend.repository.UserRepository;
+import com.volleyball.volleyballcommunitybackend.util.SensitiveWordFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,13 +23,16 @@ public class CommentService {
     private final UserRepository userRepository;
     private final PostRepository postRepository;
     private final FileService fileService;
+    private final SensitiveWordFilter sensitiveWordFilter;
 
     public CommentService(CommentRepository commentRepository, UserRepository userRepository,
-                        PostRepository postRepository, FileService fileService) {
+                        PostRepository postRepository, FileService fileService,
+                        SensitiveWordFilter sensitiveWordFilter) {
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
         this.postRepository = postRepository;
         this.fileService = fileService;
+        this.sensitiveWordFilter = sensitiveWordFilter;
     }
 
     public CommentResponse addComment(Long postId, CommentRequest request, Long userId, HttpServletRequest httpRequest) {
@@ -47,7 +51,7 @@ public class CommentService {
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
 
         Comment comment = new Comment();
-        comment.setContent(request.getContent());
+        comment.setContent(sensitiveWordFilter.filter(request.getContent()));
         comment.setUserId(userId);
         comment.setPostId(postId);
         comment.setParentId(request.getParentId());
@@ -77,6 +81,14 @@ public class CommentService {
         if (!comment.getUserId().equals(userId)) {
             throw new RuntimeException("无权限删除此评论");
         }
+
+        commentRepository.delete(comment);
+    }
+
+    // 管理员删除评论
+    public void deleteByAdmin(Long commentId, Long adminId, String reason) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new RuntimeException("评论不存在"));
 
         commentRepository.delete(comment);
     }

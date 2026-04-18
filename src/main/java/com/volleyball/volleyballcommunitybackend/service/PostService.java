@@ -12,6 +12,7 @@ import com.volleyball.volleyballcommunitybackend.repository.FavoriteRepository;
 import com.volleyball.volleyballcommunitybackend.repository.LikeRepository;
 import com.volleyball.volleyballcommunitybackend.repository.PostRepository;
 import com.volleyball.volleyballcommunitybackend.repository.UserRepository;
+import com.volleyball.volleyballcommunitybackend.util.SensitiveWordFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,11 +30,12 @@ public class PostService {
     private final FavoriteRepository favoriteRepository;
     private final CommentRepository commentRepository;
     private final FileService fileService;
+    private final SensitiveWordFilter sensitiveWordFilter;
 
     public PostService(PostRepository postRepository, UserRepository userRepository,
                       BoardRepository boardRepository, LikeRepository likeRepository,
                       FavoriteRepository favoriteRepository, CommentRepository commentRepository,
-                      FileService fileService) {
+                      FileService fileService, SensitiveWordFilter sensitiveWordFilter) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.boardRepository = boardRepository;
@@ -41,6 +43,7 @@ public class PostService {
         this.favoriteRepository = favoriteRepository;
         this.commentRepository = commentRepository;
         this.fileService = fileService;
+        this.sensitiveWordFilter = sensitiveWordFilter;
     }
 
     public PostResponse createPost(PostRequest request, Long userId, HttpServletRequest httpRequest) {
@@ -51,8 +54,8 @@ public class PostService {
                 .orElseThrow(() -> new RuntimeException("板块不存在"));
 
         Post post = new Post();
-        post.setTitle(request.getTitle());
-        post.setContent(request.getContent());
+        post.setTitle(sensitiveWordFilter.filter(request.getTitle()));
+        post.setContent(sensitiveWordFilter.filter(request.getContent()));
         post.setUserId(userId);
         post.setBoardId(request.getBoardId());
 
@@ -89,8 +92,8 @@ public class PostService {
             throw new RuntimeException("无权限修改此帖子");
         }
 
-        post.setTitle(request.getTitle());
-        post.setContent(request.getContent());
+        post.setTitle(sensitiveWordFilter.filter(request.getTitle()));
+        post.setContent(sensitiveWordFilter.filter(request.getContent()));
         post.setBoardId(request.getBoardId());
 
         Post updatedPost = postRepository.save(post);
@@ -108,6 +111,14 @@ public class PostService {
         if (!post.getUserId().equals(userId)) {
             throw new RuntimeException("无权限删除此帖子");
         }
+
+        postRepository.delete(post);
+    }
+
+    // 管理员删除帖子
+    public void deleteByAdmin(Long postId, Long adminId, String reason) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("帖子不存在"));
 
         postRepository.delete(post);
     }
