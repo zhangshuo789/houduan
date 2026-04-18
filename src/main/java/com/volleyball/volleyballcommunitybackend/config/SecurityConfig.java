@@ -1,5 +1,8 @@
 package com.volleyball.volleyballcommunitybackend.config;
 
+import com.volleyball.volleyballcommunitybackend.entity.SysRole;
+import com.volleyball.volleyballcommunitybackend.entity.SysUserRole;
+import com.volleyball.volleyballcommunitybackend.repository.SysUserRoleRepository;
 import com.volleyball.volleyballcommunitybackend.util.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -14,10 +17,16 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.stereotype.Component;
@@ -95,9 +104,11 @@ public class SecurityConfig {
     public static class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         private final JwtUtil jwtUtil;
+        private final SysUserRoleRepository sysUserRoleRepository;
 
-        public JwtAuthenticationFilter(JwtUtil jwtUtil) {
+        public JwtAuthenticationFilter(JwtUtil jwtUtil, SysUserRoleRepository sysUserRoleRepository) {
             this.jwtUtil = jwtUtil;
+            this.sysUserRoleRepository = sysUserRoleRepository;
         }
 
         @Override
@@ -110,13 +121,29 @@ public class SecurityConfig {
                 if (jwtUtil.validateToken(token)) {
                     Long userId = jwtUtil.getUserIdFromToken(token);
                     String username = jwtUtil.getUsernameFromToken(token);
+
+                    // 加载用户角色
+                    List<SysUserRole> userRoles = sysUserRoleRepository.findByUserId(userId);
+                    List<GrantedAuthority> authorities = userRoles.stream()
+                            .map(ur -> {
+                                SysRole role = new SysRole();
+                                role.setId(ur.getRoleId());
+                                return new SimpleGrantedAuthority("ROLE_" + getRoleName(ur.getRoleId()));
+                            })
+                            .collect(Collectors.toList());
+
                     UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(userId, username, Collections.emptyList());
+                            new UsernamePasswordAuthenticationToken(userId, username, authorities);
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             }
 
             filterChain.doFilter(request, response);
+        }
+
+        private String getRoleName(Long roleId) {
+            if (roleId == 1L) return "ADMIN";
+            return "USER";
         }
     }
 }
