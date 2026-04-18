@@ -202,6 +202,9 @@ public class EventService {
         }
         try {
             Long fileId = Long.parseLong(avatar);
+            if (request == null) {
+                return null;
+            }
             return fileService.getFileUrl(fileId, request);
         } catch (NumberFormatException e) {
             return avatar;
