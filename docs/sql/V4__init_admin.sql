@@ -85,6 +85,11 @@ CREATE TABLE IF NOT EXISTS admin_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志表';
 
 -- -------------------------------------------
+-- 修复 user 表的 created_at 默认值（如果需要）
+-- -------------------------------------------
+ALTER TABLE user MODIFY COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- -------------------------------------------
 -- 初始化数据
 -- -------------------------------------------
 
@@ -95,7 +100,7 @@ INSERT INTO sys_role (name, description) VALUES ('ADMIN', '系统管理员');
 -- BCrypt加密后的密码: $2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi
 INSERT INTO user (username, password, nickname, avatar, bio, created_at)
 VALUES ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '管理员', '', '系统管理员', NOW())
-ON DUPLICATE KEY UPDATE nickname='管理员';
+ON DUPLICATE KEY UPDATE nickname='管理员', password=VALUES(password);
 
 -- 给管理员分配 ADMIN 角色
 INSERT INTO sys_user_role (user_id, role_id)
