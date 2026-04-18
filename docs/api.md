@@ -1966,3 +1966,554 @@ GET /api/user/{id}/subscriptions
 | eventStatusChanged | 赛事状态变更 | {eventId, oldStatus, newStatus} |
 | newRegistration | 新报名（通知主办方） | Registration 对象 |
 | registrationResult | 报名审核结果（通知报名者） | {eventId, eventTitle, approved} |
+
+---
+
+## 管理员模块 /api/admin
+
+> **权限**：所有接口需 ADMIN 角色
+
+### 用户管理
+
+#### 获取用户列表
+
+```
+GET /api/admin/users
+```
+
+**查询参数**：
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| page | int | 否 | 0 | 页码 |
+| size | int | 否 | 10 | 每页数量 |
+| keyword | string | 否 | | 搜索关键词(用户名/昵称) |
+| disabled | boolean | 否 | | 筛选禁用状态 |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "content": [
+      {
+        "id": 1,
+        "username": "admin",
+        "nickname": "管理员",
+        "avatar": "http://xxx.com/avatar.png",
+        "bio": "系统管理员",
+        "roles": ["ADMIN"],
+        "disabled": false,
+        "disabledReason": null,
+        "createdAt": "2026-04-01T10:00:00"
+      }
+    ],
+    "totalElements": 100,
+    "totalPages": 10,
+    "number": 0,
+    "size": 10
+  }
+}
+```
+
+#### 设置用户角色
+
+```
+PUT /api/admin/users/{id}/role
+```
+
+**请求数据**：
+
+```json
+{
+  "roleId": 1
+}
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "设置成功",
+  "data": null
+}
+```
+
+#### 设置用户状态
+
+```
+PUT /api/admin/users/{id}/status
+```
+
+**请求数据**：
+
+```json
+{
+  "disabled": true,
+  "reason": "违规发言"
+}
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "设置成功",
+  "data": null
+}
+```
+
+---
+
+### 内容审核
+
+#### 提交举报
+
+```
+POST /api/admin/reports
+```
+
+**请求数据**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| targetType | string | 是 | 被举报类型：POST/COMMENT/EVENT |
+| targetId | long | 是 | 被举报内容ID |
+| reason | string | 是 | 举报原因 |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "举报成功",
+  "data": null
+}
+```
+
+#### 获取举报列表
+
+```
+GET /api/admin/reports
+```
+
+**查询参数**：
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| page | int | 否 | 0 | 页码 |
+| size | int | 否 | 10 | 每页数量 |
+| status | string | 否 | | 筛选状态：PENDING/HANDLED/REJECTED |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "content": [
+      {
+        "id": 1,
+        "reporterId": 2,
+        "reporterNickname": "举报人",
+        "targetType": "POST",
+        "targetId": 10,
+        "targetTitle": "帖子标题",
+        "reason": "违规内容",
+        "status": "PENDING",
+        "handledBy": null,
+        "handledByNickname": null,
+        "handledAt": null,
+        "handleResult": null,
+        "createdAt": "2026-04-01T10:00:00"
+      }
+    ],
+    "totalElements": 5,
+    "totalPages": 1,
+    "number": 0,
+    "size": 10
+  }
+}
+```
+
+#### 处理举报
+
+```
+PUT /api/admin/reports/{id}
+```
+
+**请求数据**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| approved | boolean | 是 | true=确认举报(删除内容), false=驳回 |
+| result | string | 否 | HANDLED时结果：CONTENT_DELETED/WARN_USER/DISMISS |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "处理成功",
+  "data": null
+}
+```
+
+#### 获取待处理举报数量
+
+```
+GET /api/admin/reports/pending
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "pendingCount": 5
+  }
+}
+```
+
+---
+
+### 内容管理
+
+#### 删除违规帖子
+
+```
+DELETE /api/admin/posts/{id}
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "删除成功",
+  "data": null
+}
+```
+
+#### 删除违规评论
+
+```
+DELETE /api/admin/comments/{id}
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "删除成功",
+  "data": null
+}
+```
+
+---
+
+### 赛事管理
+
+#### 获取赛事列表
+
+```
+GET /api/admin/events
+```
+
+**查询参数**：同 `GET /api/event`
+
+#### 修改赛事状态
+
+```
+PUT /api/admin/events/{id}/status
+```
+
+**请求数据**：
+
+```json
+{
+  "status": "CANCELLED"
+}
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": null
+}
+```
+
+#### 获取赛事报名列表
+
+```
+GET /api/admin/events/{id}/registrations
+```
+
+**说明**：仅管理员或发布者可查看
+
+---
+
+### 群聊管理
+
+#### 获取群列表
+
+```
+GET /api/admin/groups
+```
+
+**查询参数**：
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| page | int | 否 | 0 | 页码 |
+| size | int | 否 | 10 | 每页数量 |
+
+#### 更换群主
+
+```
+PUT /api/admin/groups/{id}/owner
+```
+
+**请求数据**：
+
+```json
+{
+  "newOwnerId": 2
+}
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "更换成功",
+  "data": null
+}
+```
+
+#### 解散违规群
+
+```
+DELETE /api/admin/groups/{id}
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "解散成功",
+  "data": null
+}
+```
+
+---
+
+### 数据统计
+
+#### 运营概览
+
+```
+GET /api/admin/stats/overview
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "totalUsers": 1000,
+    "totalPosts": 5000,
+    "totalComments": 10000,
+    "totalEvents": 50,
+    "totalGroups": 20,
+    "totalReports": 10,
+    "pendingReports": 3,
+    "disabledUsers": 5
+  }
+}
+```
+
+#### 用户统计
+
+```
+GET /api/admin/stats/users
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "totalUsers": 1000,
+    "newUsersToday": 10,
+    "newUsersThisMonth": 200,
+    "activeUsersToday": 100,
+    "activeUsersThisMonth": 500
+  }
+}
+```
+
+#### 内容统计
+
+```
+GET /api/admin/stats/content
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "totalPosts": 5000,
+    "totalComments": 10000,
+    "postsToday": 20,
+    "commentsToday": 50,
+    "postsThisMonth": 300,
+    "commentsThisMonth": 800
+  }
+}
+```
+
+---
+
+### 系统配置
+
+#### 板块管理
+
+```
+GET /api/admin/boards
+```
+
+**返回数据**：同 `GET /api/boards`
+
+```
+POST /api/admin/boards
+```
+
+**请求数据**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | string | 是 | 板块名称 |
+| description | string | 否 | 板块描述 |
+| icon | string | 否 | 板块图标 |
+
+```
+PUT /api/admin/boards/{id}
+```
+
+**请求数据**：同 POST
+
+```
+DELETE /api/admin/boards/{id}
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "删除成功",
+  "data": null
+}
+```
+
+#### 敏感词管理
+
+##### 获取敏感词列表
+
+```
+GET /api/admin/sensitive-words
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": 1,
+      "word": "违规词",
+      "replacement": "***",
+      "level": "WARN",
+      "createdAt": "2026-04-01T10:00:00"
+    }
+  ]
+}
+```
+
+##### 添加敏感词
+
+```
+POST /api/admin/sensitive-words
+```
+
+**请求数据**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| word | string | 是 | 敏感词 |
+| replacement | string | 否 | 替换词，默认 `***` |
+| level | string | 否 | 级别：WARN/BLOCK |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "添加成功",
+  "data": null
+}
+```
+
+##### 更新敏感词
+
+```
+PUT /api/admin/sensitive-words/{id}
+```
+
+**请求数据**：同 POST
+
+##### 删除敏感词
+
+```
+DELETE /api/admin/sensitive-words/{id}
+```
+
+---
+
+### 操作日志
+
+#### 获取操作日志
+
+```
+GET /api/admin/logs
+```
+
+**查询参数**：
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| page | int | 否 | 0 | 页码 |
+| size | int | 否 | 10 | 每页数量 |

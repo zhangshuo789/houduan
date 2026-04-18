@@ -517,6 +517,26 @@ LogUtils.clearMdc();
 审核：主办方查看报名列表 → 审核通过/拒绝 → 报名者收到SSE通知
 ```
 
+### 管理员端流程
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                       管理员端流程                                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  [登录] → [仪表盘概览] → [用户/内容/赛事/群聊/配置]              │
+│                           ↓                                     │
+│  用户管理：用户列表 → 搜索筛选 → 设置角色/禁用用户                 │
+│                           ↓                                     │
+│  内容审核：查看举报 → 审核内容 → 处理结果(删除/警告/驳回)          │
+│                           ↓                                     │
+│  敏感词配置：添加/编辑敏感词 → 设置替换词 → 实时生效              │
+│                           ↓                                     │
+│  数据统计：查看运营/用户/内容统计 → 数据概览                       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## 阶段五：管理员端功能实现 ✅ 已完成
@@ -583,37 +603,77 @@ LogUtils.clearMdc();
 # 管理员接口 /api/admin/* (需ADMIN角色)
 
 ## 用户管理
-GET    /api/admin/users           # 用户列表(分页、搜索)
-PUT    /api/admin/users/{id}/role  # 设置用户角色
-PUT    /api/admin/users/{id}/status # 禁用/启用用户
+GET    /api/admin/users                    # 用户列表(分页、搜索、状态筛选)
+PUT    /api/admin/users/{id}/role         # 设置用户角色
+PUT    /api/admin/users/{id}/status       # 禁用/启用用户
+
+## 内容审核
+POST   /api/admin/reports                  # 用户提交举报
+GET    /api/admin/reports                  # 举报列表(状态筛选)
+PUT    /api/admin/reports/{id}            # 处理举报
+GET    /api/admin/reports/pending         # 待处理举报数量
 
 ## 内容管理
-GET    /api/admin/reports         # 举报列表
-PUT    /api/admin/reports/{id}    # 处理举报
-DELETE /api/admin/posts/{id}      # 删除违规帖子
-DELETE /api/admin/comments/{id}   # 删除违规评论
+DELETE /api/admin/posts/{id}              # 删除违规帖子
+DELETE /api/admin/comments/{id}           # 删除违规评论
 
 ## 赛事管理
-GET    /api/admin/events          # 赛事列表(所有类型)
-PUT    /api/admin/events/{id}/status # 修改赛事状态
+GET    /api/admin/events                  # 赛事列表(所有类型)
+PUT    /api/admin/events/{id}/status      # 修改赛事状态
+GET    /api/admin/events/{id}/registrations # 赛事报名列表
 
 ## 群聊管理
-GET    /api/admin/groups          # 群列表
-PUT    /api/admin/groups/{id}/owner # 更换群主
-DELETE /api/admin/groups/{id}      # 解散违规群
+GET    /api/admin/groups                   # 群列表
+PUT    /api/admin/groups/{id}/owner       # 更换群主
+DELETE /api/admin/groups/{id}             # 解散违规群
 
 ## 数据统计
-GET    /api/admin/stats/overview  # 运营概览
-GET    /api/admin/stats/users     # 用户统计
-GET    /api/admin/stats/content   # 内容统计
-GET    /api/admin/stats/events    # 赛事统计
+GET    /api/admin/stats/overview           # 运营概览
+GET    /api/admin/stats/users             # 用户统计
+GET    /api/admin/stats/content           # 内容统计
 
 ## 系统配置
-GET    /api/admin/boards          # 板块列表
-POST   /api/admin/boards          # 创建板块
-PUT    /api/admin/boards/{id}     # 更新板块
-DELETE /api/admin/boards/{id}     # 删除板块
+GET    /api/admin/boards                  # 板块列表
+POST   /api/admin/boards                  # 创建板块
+PUT    /api/admin/boards/{id}            # 更新板块
+DELETE /api/admin/boards/{id}            # 删除板块
+GET    /api/admin/sensitive-words         # 敏感词列表
+POST   /api/admin/sensitive-words         # 添加敏感词
+PUT    /api/admin/sensitive-words/{id}   # 更新敏感词
+DELETE /api/admin/sensitive-words/{id}   # 删除敏感词
+
+## 操作日志
+GET    /api/admin/logs                    # 操作日志列表
 ```
+
+### 管理员业务流程
+
+```
+1. 用户管理流程：
+   管理员登录 → 查看用户列表 → 搜索/筛选用户 → 设置角色/禁用状态
+
+2. 内容举报处理流程：
+   用户提交举报 → 举报进入待处理队列 → 管理员审核 → 处理结果(删除内容/警告用户/驳回)
+
+3. 敏感词过滤流程：
+   管理员设置敏感词及替换词 → 用户发帖/评论时自动检测 → 敏感词替换为指定内容
+
+4. 赛事/群聊管理流程：
+   管理员查看赛事/群聊列表 → 修改状态/更换群主/解散违规内容
+```
+
+### 举报状态流转
+
+```
+PENDING(待处理) → HANDLED(已处理)：确认举报，删除内容或警告用户
+PENDING(待处理) → REJECTED(已驳回)：举报不实，驳回举报
+```
+
+### 管理员操作日志
+
+所有管理员操作自动记录到 admin_log 表：
+- 记录操作类型、目标对象、操作详情、IP地址
+- 用于审计追溯和异常排查
 
 ---
 
