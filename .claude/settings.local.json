@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(./mvnw compile:*)"
+      "Bash(./mvnw compile:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git worktree:*)",
+      "Bash(./mvnw test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(./mvnw clean:*)"
     ]
   }
 }
