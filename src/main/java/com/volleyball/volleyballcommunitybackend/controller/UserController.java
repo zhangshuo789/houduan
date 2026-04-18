@@ -4,7 +4,7 @@ import com.volleyball.volleyballcommunitybackend.dto.request.UpdateUserRequest;
 import com.volleyball.volleyballcommunitybackend.dto.response.ApiResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.FeedResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.UserResponse;
-import com.volleyball.volleyballcommunitybackend.dto.response.UserStatsResponse;
+import com.volleyball.volleyballcommunitybackend.dto.response.UserProfileStatsResponse;
 import com.volleyball.volleyballcommunitybackend.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -47,8 +47,8 @@ public class UserController {
     }
 
     @GetMapping("/{id}/stats")
-    public ResponseEntity<ApiResponse<UserStatsResponse>> getUserStats(@PathVariable Long id) {
-        UserStatsResponse stats = userService.getUserStats(id);
+    public ResponseEntity<ApiResponse<UserProfileStatsResponse>> getUserStats(@PathVariable Long id) {
+        UserProfileStatsResponse stats = userService.getUserStats(id);
         return ResponseEntity.ok(ApiResponse.success(stats));
     }
 

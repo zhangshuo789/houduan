@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 public interface EventRegistrationRepository extends JpaRepository<EventRegistration, Long> {
     Page<EventRegistration> findByEventId(Long eventId, Pageable pageable);
     Page<EventRegistration> findByEventIdAndStatus(Long eventId, String status, Pageable pageable);
+    Page<EventRegistration> findByEventIdOrderByCreatedAtDesc(Long eventId, Pageable pageable);
     boolean existsByEventIdAndUserId(Long eventId, Long userId);
     long countByEventId(Long eventId);
     long countByEventIdAndStatus(Long eventId, String status);

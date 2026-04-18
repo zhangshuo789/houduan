@@ -3,7 +3,7 @@ package com.volleyball.volleyballcommunitybackend.service;
 import com.volleyball.volleyballcommunitybackend.dto.request.UpdateUserRequest;
 import com.volleyball.volleyballcommunitybackend.dto.response.FeedResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.UserResponse;
-import com.volleyball.volleyballcommunitybackend.dto.response.UserStatsResponse;
+import com.volleyball.volleyballcommunitybackend.dto.response.UserProfileStatsResponse;
 import com.volleyball.volleyballcommunitybackend.entity.FileEntity;
 import com.volleyball.volleyballcommunitybackend.entity.Follow;
 import com.volleyball.volleyballcommunitybackend.entity.Post;
@@ -58,13 +58,13 @@ public class UserService {
         return toUserResponse(saved, httpRequest);
     }
 
-    public UserStatsResponse getUserStats(Long userId) {
+    public UserProfileStatsResponse getUserStats(Long userId) {
         long followCount = followService.getFollowCount(userId);
         long followerCount = followService.getFollowerCount(userId);
         long friendCount = followService.getFriendCount(userId);
         long postCount = postRepository.countByUserId(userId);
 
-        return new UserStatsResponse(followCount, followerCount, postCount, friendCount);
+        return new UserProfileStatsResponse(followCount, followerCount, postCount, friendCount);
     }
 
     public Page<FeedResponse> getUserFeed(Long userId, Pageable pageable, HttpServletRequest request) {
@@ -98,7 +98,7 @@ public class UserService {
 
     private UserResponse toUserResponse(User user, HttpServletRequest request) {
         String avatarUrl = getAvatarUrl(user, request);
-        UserStatsResponse stats = getUserStats(user.getId());
+        UserProfileStatsResponse stats = getUserStats(user.getId());
 
         return new UserResponse(
                 user.getId(),

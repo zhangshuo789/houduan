@@ -22,6 +22,9 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     // 群聊消息查询
     Page<Message> findByTypeAndTargetIdOrderByCreatedAtDesc(String type, Long targetId, Pageable pageable);
 
+    // 查询所有群聊（按创建时间倒序）
+    Page<Message> findByTypeOrderByCreatedAtDesc(String type, Pageable pageable);
+
     // 查询用户参与的所有私聊会话（按最新消息排序）
     // 使用 GROUP BY 获取每个对话伙伴的最新消息时间
     @Query(value = "SELECT other_user_id FROM (" +

@@ -7,7 +7,9 @@
       "Bash(./mvnw test:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(./mvnw clean:*)"
+      "Bash(./mvnw clean:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git stash:*)"
     ]
   }
 }
