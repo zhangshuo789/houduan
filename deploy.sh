@@ -50,8 +50,9 @@ scp target/volleyball-community-backend-0.0.1.jar root@$HOST_IP:/tmp/app.jar
 ssh root@$HOST_IP "docker build -t $IMAGE_NAME /tmp/app.jar -f - <<EOF
 FROM openjdk:17-jdk-slim
 WORKDIR /app
+ENV SPRING_PROFILES_ACTIVE=prod
 COPY app.jar /app/app.jar
-ENTRYPOINT [\"java\", \"-jar\", \"/app/app.jar\", \"--spring.profiles.active=prod\"]
+ENTRYPOINT [\"java\", \"-jar\", \"/app/app.jar\"]
 EXPOSE 8090
 EOF"
 echo "[4/5] Docker镜像构建完成"
