@@ -7,17 +7,21 @@ import lombok.AllArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "sys_user_role")
+@Table(name = "sys_user_role", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"user_id", "role_id"})
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class SysUserRole {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Id
     @Column(name = "role_id", nullable = false)
     private Long roleId;
 
