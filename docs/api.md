@@ -2016,9 +2016,33 @@ GET /api/user/{id}/subscriptions
 | 事件名 | 触发时机 | data 内容 |
 |--------|----------|-----------|
 | eventUpdate | 赛事信息更新 | Event 对象 |
-| eventStatusChanged | 赛事状态变更 | {eventId, oldStatus, newStatus} |
+| eventStatusChanged | 赛事状态变更（自动触发或手动修改） | {eventId, eventTitle, oldStatus, newStatus, message} |
 | newRegistration | 新报名（通知主办方） | Registration 对象 |
 | registrationResult | 报名审核结果（通知报名者） | {eventId, eventTitle, approved} |
+
+### 赛事状态自动变更说明
+
+系统定时任务每分钟扫描赛事状态，自动执行以下变更：
+
+| 原状态 | 新状态 | 触发条件 |
+|--------|--------|----------|
+| PREPARING | REGISTERING | 当前时间 >= registration_deadline（报名开始时间） |
+| REGISTERING | IN_PROGRESS | 当前时间 >= start_time（赛事开始时间） |
+| IN_PROGRESS | ENDED | 当前时间 >= end_time（赛事结束时间） |
+
+状态变更后，会通过 SSE 事件 `eventStatusChanged` 推送给所有订阅者。
+
+**eventStatusChanged 事件 data 示例**：
+
+```json
+{
+  "eventId": 1,
+  "eventTitle": "2026年全国排球联赛",
+  "oldStatus": "REGISTERING",
+  "newStatus": "IN_PROGRESS",
+  "message": "赛事已开始"
+}
+```
 
 ---
 
