@@ -17,8 +17,8 @@ HOST_PORT_HTTP=8090
 CONTAINER_PORT_HTTP=8090
 
 # 文件存储目录（宿主机）
-HOST_DATA_DIR="/tools/app/volleyball-community"
-CONTAINER_DATA_DIR="/app/volleyball-community"
+HOST_DATA_DIR="/tools/volleyball-community/static"
+CONTAINER_DATA_DIR="/app/static"
 
 # ==================== 部署脚本 ====================
 echo "========== 排球社区后端部署脚本 =========="
