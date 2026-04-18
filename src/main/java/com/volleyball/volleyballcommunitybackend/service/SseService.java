@@ -49,4 +49,20 @@ public class SseService {
             }
         }
     }
+
+    public void sendEventUpdate(Long userId, Object data) {
+        sendMessageToUser(userId, "eventUpdate", data);
+    }
+
+    public void sendEventStatusChanged(Long userId, Object data) {
+        sendMessageToUser(userId, "eventStatusChanged", data);
+    }
+
+    public void sendNewRegistration(Long organizerId, Object data) {
+        sendMessageToUser(organizerId, "newRegistration", data);
+    }
+
+    public void sendRegistrationResult(Long userId, Object data) {
+        sendMessageToUser(userId, "registrationResult", data);
+    }
 }
