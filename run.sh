@@ -7,7 +7,7 @@ set -e
 # ==================== 配置区域 ====================
 IMAGE_NAME="volleyball-backend"
 CONTAINER_NAME="volleyball-backend"
-HOST_PORT=8080
+HOST_PORT=8090
 DATA_DIR="/data/volleyball-community"
 
 # ==================== 命令处理 ====================
@@ -15,7 +15,7 @@ case "$1" in
     start)
         echo "启动容器..."
         docker run -d \
-          -p $HOST_PORT:8080 \
+          -p $HOST_PORT:$HOST_PORT \
           --name $CONTAINER_NAME \
           -v $DATA_DIR:$DATA_DIR \
           $IMAGE_NAME

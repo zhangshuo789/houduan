@@ -13,8 +13,8 @@ IMAGE_NAME="volleyball-backend"
 CONTAINER_NAME="volleyball-backend"
 
 # 端口配置
-HOST_PORT_HTTP=8080
-CONTAINER_PORT_HTTP=8080
+HOST_PORT_HTTP=8090
+CONTAINER_PORT_HTTP=8090
 
 # 文件存储目录（宿主机）
 HOST_DATA_DIR="/data/volleyball-community"
@@ -52,7 +52,7 @@ FROM openjdk:17-jdk-slim
 WORKDIR /app
 COPY app.jar /app/app.jar
 ENTRYPOINT [\"java\", \"-jar\", \"/app/app.jar\", \"--spring.profiles.active=prod\"]
-EXPOSE 8080
+EXPOSE 8090
 EOF"
 echo "[4/5] Docker镜像构建完成"
 
