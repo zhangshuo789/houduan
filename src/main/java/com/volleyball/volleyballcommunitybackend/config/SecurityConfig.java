@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,6 +29,7 @@ import java.util.Collections;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
@@ -58,6 +60,7 @@ public class SecurityConfig {
                    .requestMatchers(HttpMethod.POST, "/api/event").authenticated()
                    .requestMatchers(HttpMethod.PUT, "/api/event/{id}").authenticated()
                    .requestMatchers(HttpMethod.DELETE, "/api/event/{id}").hasRole("ADMIN")
+                   .requestMatchers("/api/admin/**").hasRole("ADMIN")
                    .requestMatchers(HttpMethod.POST, "/api/event/{id}/subscribe").authenticated()
                    .requestMatchers(HttpMethod.DELETE, "/api/event/{id}/subscribe").authenticated()
                    .requestMatchers(HttpMethod.POST, "/api/event/{id}/register").authenticated()
