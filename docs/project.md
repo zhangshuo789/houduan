@@ -411,6 +411,6 @@ LogUtils.clearMdc();
 - [x] 群聊（group）
 - [x] SSE实时推送
 
-### 阶段四：赛事日历 🔄 待开发
-- [ ] 赛事发布（event）
-- [ ] 赛事订阅（event_subscription）
+### 阶段四：赛事日历 🔄 开发中
+- [x] 赛事发布（event）
+- [x] 赛事订阅（event_subscription）

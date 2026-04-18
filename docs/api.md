@@ -1702,3 +1702,267 @@ GET /api/file/{id}/url
   "data": "http://localhost:8080/api/file/1"
 }
 ```
+
+---
+
+## 赛事模块 /api/event
+
+### 获取赛事列表
+
+```
+GET /api/event
+```
+
+**查询参数**：
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| page | int | 否 | 0 | 页码（从0开始） |
+| size | int | 否 | 10 | 每页数量 |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "content": [
+      {
+        "id": 1,
+        "title": "2026春季排球联赛",
+        "description": "...",
+        "type": "MATCH",
+        "status": "REGISTERING",
+        "startTime": "2026-05-01T09:00:00",
+        "endTime": "2026-05-03T18:00:00",
+        "location": "国家体育馆",
+        "organizer": "排球协会",
+        "requirements": "身体健康，18岁以上",
+        "maxParticipants": 16,
+        "fee": 500.00,
+        "contactInfo": "电话：xxx",
+        "registrationDeadline": "2026-04-25T23:59:59",
+        "imageUrls": ["http://xxx.com/1.jpg"],
+        "createdBy": {
+          "id": 1,
+          "nickname": "管理员",
+          "avatar": "http://xxx.com/avatar.png"
+        },
+        "createdAt": "2026-04-01T10:00:00"
+      }
+    ],
+    "totalElements": 100,
+    "totalPages": 10,
+    "number": 0,
+    "size": 10
+  }
+}
+```
+
+**说明**：按 startTime 升序排列
+
+---
+
+### 获取赛事详情
+
+```
+GET /api/event/{id}
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "title": "2026春季排球联赛",
+    "description": "...",
+    "type": "MATCH",
+    "status": "REGISTERING",
+    "startTime": "2026-05-01T09:00:00",
+    "endTime": "2026-05-03T18:00:00",
+    "location": "国家体育馆",
+    "organizer": "排球协会",
+    "requirements": "身体健康，18岁以上",
+    "maxParticipants": 16,
+    "fee": 500.00,
+    "contactInfo": "电话：xxx",
+    "registrationDeadline": "2026-04-25T23:59:59",
+    "imageUrls": ["http://xxx.com/1.jpg"],
+    "createdBy": {...},
+    "createdAt": "2026-04-01T10:00:00",
+    "updatedAt": "2026-04-01T10:00:00",
+    "registrationCount": 8,
+    "subscriberCount": 50,
+    "isSubscribed": true,
+    "hasRegistered": false
+  }
+}
+```
+
+**说明**：`isSubscribed` 和 `hasRegistered` 字段：已登录返回 true/false，未登录返回 null
+
+---
+
+### 创建赛事
+
+```
+POST /api/event
+```
+
+**权限**：需要登录，type=ACTIVITY 时人人可发布，type=MATCH 时需管理员
+
+**请求数据**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| title | string | 是 | 赛事标题，5-100字符 |
+| description | string | 是 | 赛事描述 |
+| type | string | 是 | MATCH(比赛) 或 ACTIVITY(活动) |
+| startTime | datetime | 是 | 开始时间 |
+| endTime | datetime | 是 | 结束时间 |
+| location | string | 是 | 地点 |
+| organizer | string | 否 | 主办方 |
+| requirements | string | 否 | 参赛要求 |
+| maxParticipants | int | 否 | 最大参赛队伍数 |
+| fee | decimal | 否 | 费用 |
+| contactInfo | string | 否 | 联系方式 |
+| registrationDeadline | datetime | 否 | 报名截止时间 |
+| imageUrls | array | 否 | 图片URL列表 |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {...}
+}
+```
+
+---
+
+### 更新赛事
+
+```
+PUT /api/event/{id}
+```
+
+**权限**：仅管理员或发布者可更新
+
+---
+
+### 删除赛事
+
+```
+DELETE /api/event/{id}
+```
+
+**权限**：仅管理员可删除
+
+---
+
+### 订阅赛事
+
+```
+POST /api/event/{id}/subscribe
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "订阅成功",
+  "data": null
+}
+```
+
+---
+
+### 取消订阅
+
+```
+DELETE /api/event/{id}/subscribe
+```
+
+---
+
+### 报名赛事
+
+```
+POST /api/event/{id}/register
+```
+
+**请求数据**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| teamName | string | 是 | 球队名称 |
+| contactPerson | string | 是 | 联系人 |
+| contactPhone | string | 是 | 联系方式 |
+| teamSize | int | 是 | 参赛人数 |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "报名成功，等待审核",
+  "data": {
+    "id": 1,
+    "teamName": "冠军队",
+    "contactPerson": "张三",
+    "contactPhone": "138****8000",
+    "teamSize": 12,
+    "status": "PENDING",
+    "createdAt": "2026-04-01T10:00:00"
+  }
+}
+```
+
+---
+
+### 查看报名列表
+
+```
+GET /api/event/{id}/registration
+```
+
+**权限**：仅管理员或发布者可查看
+
+---
+
+### 审核报名
+
+```
+PUT /api/event/{id}/registration/{regId}?approved=true
+```
+
+**权限**：仅管理员或发布者可审核
+
+---
+
+### 获取用户订阅列表
+
+```
+GET /api/user/{id}/subscriptions
+```
+
+**说明**：需要登录，仅本人可访问
+
+---
+
+## SSE 赛事事件
+
+建立 SSE 连接后，会收到以下赛事相关事件：
+
+| 事件名 | 触发时机 | data 内容 |
+|--------|----------|-----------|
+| eventUpdate | 赛事信息更新 | Event 对象 |
+| eventStatusChanged | 赛事状态变更 | {eventId, oldStatus, newStatus} |
+| newRegistration | 新报名（通知主办方） | Registration 对象 |
+| registrationResult | 报名审核结果（通知报名者） | {eventId, eventTitle, approved} |
