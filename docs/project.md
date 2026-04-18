@@ -417,3 +417,316 @@ LogUtils.clearMdc();
 - [x] 赛事报名（event_registration）
 - [x] 报名审核（registration review）
 - [x] SSE实时通知（event updates, registration results）
+
+### 阶段五：管理员端 & 知识图谱 🔄 规划中
+
+---
+
+## 枚举字段设计
+
+### 用户角色 (User Role)
+| 值 | 说明 |
+|----|------|
+| USER | 普通用户（默认） |
+| ADMIN | 管理员 |
+
+### 赛事类型 (Event Type)
+| 值 | 说明 |
+|----|------|
+| MATCH | 正式比赛，需管理员发布 |
+| ACTIVITY | 活动（如约球、训练营），登录用户可发布 |
+
+### 赛事状态 (Event Status)
+| 值 | 说明 |
+|----|------|
+| PREPARING | 筹备中 |
+| REGISTERING | 报名中 |
+| IN_PROGRESS |已开始 |
+| ENDED | 已结束 |
+| CANCELLED | 已取消 |
+
+### 报名状态 (Registration Status)
+| 值 | 说明 |
+|----|------|
+| PENDING | 待审核 |
+| APPROVED | 已通过 |
+| REJECTED | 已拒绝 |
+
+### 消息类型 (Message Type)
+| 值 | 说明 |
+|----|------|
+| private | 私信 |
+| group | 群消息 |
+
+### 群成员角色 (Group Member Role)
+| 值 | 说明 |
+|----|------|
+| OWNER | 群主 |
+| ADMIN | 管理员 |
+| MEMBER | 普通成员 |
+
+---
+
+## 业务流程总览
+
+### 用户端核心流程
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         用户端流程                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  [注册] → [登录] → [浏览帖子/赛事] → [互动(点赞/评论/收藏)]        │
+│                           ↓                                     │
+│                    [发布内容(帖子/活动)]                         │
+│                           ↓                                     │
+│                    [社交(关注/私信/群聊)]                        │
+│                           ↓                                     │
+│              [订阅赛事/报名赛事/接收通知]                         │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 内容发布流程
+
+```
+1. 发帖流程：
+   用户登录 → 选择板块 → 编写标题内容 → 上传图片(可选) → 发布帖子
+
+2. 活动发布流程：
+   用户登录 → 创建活动 → 填写信息(时间/地点/费用) → 发布活动 → 接收订阅/报名
+
+3. 赛事发布流程：
+   管理员登录 → 创建比赛 → 填写信息 → 发布比赛 → 用户订阅/报名
+```
+
+### 社交互动流程
+
+```
+关注流程：用户A关注用户B → A成为B的粉丝 → B收到通知
+好友流程：用户A添加B为好友 → B同意 → 双方成为好友 → 可私信
+群聊流程：创建群 → 邀请成员 → 群内聊天 → 群主/管理员管理成员
+```
+
+### 赛事参与流程
+
+```
+订阅：浏览赛事列表 → 订阅赛事 → 接收赛事更新通知
+报名：浏览赛事 → 填写报名信息 → 等待审核 → 接收审核结果通知
+审核：主办方查看报名列表 → 审核通过/拒绝 → 报名者收到SSE通知
+```
+
+---
+
+## 阶段五：管理员端功能规划
+
+### 管理员后台模块
+
+| 功能 | 说明 |
+|------|------|
+| 用户管理 | 查看用户列表、禁用/启用用户、设置管理员 |
+| 内容审核 | 帖子举报处理、评论删除、违规内容处置 |
+| 赛事管理 | 赛事列表、赛事审核( MATCH类型)、报名管理 |
+| 群聊管理 | 群列表、群主变更、违规群封禁 |
+| 数据统计 | 日活/月活、发帖量、互动量、赛事参与统计 |
+| 系统配置 | 板块管理、敏感词过滤、通知模板 |
+
+### 数据模型扩展
+
+#### 用户角色表 (sys_role)
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键 |
+| name | VARCHAR(20) | 角色名(ADMIN) |
+| description | VARCHAR(100) | 描述 |
+| created_at | DATETIME | 创建时间 |
+
+#### 用户角色关联表 (sys_user_role)
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| user_id | BIGINT | 用户ID |
+| role_id | BIGINT | 角色ID |
+
+#### 内容举报表 (report)
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键 |
+| reporter_id | BIGINT | 举报人ID |
+| target_type | VARCHAR(20) | 举报类型(post/comment/event) |
+| target_id | BIGINT | 被举报内容ID |
+| reason | TEXT | 举报原因 |
+| status | VARCHAR(20) | 状态(PENDING/HANDLED/REJECTED) |
+| handled_by | BIGINT | 处理人ID |
+| handled_at | DATETIME | 处理时间 |
+| created_at | DATETIME | 举报时间 |
+
+#### 操作日志表 (admin_log)
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键 |
+| admin_id | BIGINT | 管理员ID |
+| action | VARCHAR(50) | 操作类型 |
+| target_type | VARCHAR(20) | 操作对象类型 |
+| target_id | BIGINT | 操作对象ID |
+| detail | TEXT | 操作详情 |
+| ip | VARCHAR(50) | IP地址 |
+| created_at | DATETIME | 操作时间 |
+
+### API 接口规划
+
+```
+# 管理员接口 /api/admin/* (需ADMIN角色)
+
+## 用户管理
+GET    /api/admin/users           # 用户列表(分页、搜索)
+PUT    /api/admin/users/{id}/role  # 设置用户角色
+PUT    /api/admin/users/{id}/status # 禁用/启用用户
+
+## 内容管理
+GET    /api/admin/reports         # 举报列表
+PUT    /api/admin/reports/{id}    # 处理举报
+DELETE /api/admin/posts/{id}      # 删除违规帖子
+DELETE /api/admin/comments/{id}   # 删除违规评论
+
+## 赛事管理
+GET    /api/admin/events          # 赛事列表(所有类型)
+PUT    /api/admin/events/{id}/status # 修改赛事状态
+
+## 群聊管理
+GET    /api/admin/groups          # 群列表
+PUT    /api/admin/groups/{id}/owner # 更换群主
+DELETE /api/admin/groups/{id}      # 解散违规群
+
+## 数据统计
+GET    /api/admin/stats/overview  # 运营概览
+GET    /api/admin/stats/users     # 用户统计
+GET    /api/admin/stats/content   # 内容统计
+GET    /api/admin/stats/events    # 赛事统计
+
+## 系统配置
+GET    /api/admin/boards          # 板块列表
+POST   /api/admin/boards          # 创建板块
+PUT    /api/admin/boards/{id}     # 更新板块
+DELETE /api/admin/boards/{id}     # 删除板块
+```
+
+---
+
+## 知识图谱功能规划
+
+### 概念设计
+
+知识图谱将构建排球领域的结构化知识网络，包括：
+- **实体**：球员、球队、赛事、场地、装备、技术动作
+- **关系**：球员-效力-球队、球队-参加-赛事、球员-使用-装备
+- **属性**：球员身高、体重、位置；球队战绩、排名
+
+### 数据模型
+
+#### 实体类型 (Entity Type)
+| 类型 | 说明 | 示例 |
+|------|------|------|
+| PLAYER | 球员 | 朱婷、袁心玥 |
+| TEAM | 球队 | 中国女排 |
+| EVENT | 赛事 | 世界杯、世锦赛 |
+| VENUE | 场地 | 北京体育馆 |
+| EQUIPMENT | 装备 | 排球、排球鞋 |
+| TECHNIQUE | 技术 | 扣球、拦网、传球 |
+
+#### 关系类型 (Relation Type)
+| 关系 | 说明 | 示例 |
+|------|------|------|
+| PLAYS_FOR | 效力于 | 朱婷-效力于-中国女排 |
+| PARTICIPATES_IN | 参加 | 中国女排-参加-世界杯 |
+| LOCATED_AT | 位于 | 北京体育馆-位于-北京 |
+| USES | 使用 | 朱婷-使用-Nike排球鞋 |
+| WINS | 获胜 | 中国女排-获胜-奥运会 |
+| TEACHES | 执教 | 郎平-执教-中国女排 |
+
+#### 实体表 (knowledge_entity)
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键 |
+| name | VARCHAR(100) | 实体名称 |
+| type | VARCHAR(20) | 实体类型 |
+| description | TEXT | 描述 |
+| properties | JSON | 属性JSON |
+| created_by | BIGINT | 创建者ID |
+| created_at | DATETIME | 创建时间 |
+| updated_at | DATETIME | 更新时间 |
+
+#### 关系表 (knowledge_relation)
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键 |
+| from_entity_id | BIGINT | 起始实体ID |
+| relation_type | VARCHAR(50) | 关系类型 |
+| to_entity_id | BIGINT | 目标实体ID |
+| weight | FLOAT | 权重/置信度 |
+| created_at | DATETIME | 创建时间 |
+
+#### 实体图片表 (entity_image)
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键 |
+| entity_id | BIGINT | 实体ID |
+| image_url | VARCHAR(500) | 图片URL |
+| caption | VARCHAR(255) | 图片说明 |
+
+### API 接口规划
+
+```
+# 知识图谱接口 /api/knowledge/*
+
+## 实体管理
+GET    /api/knowledge/entity/{id}     # 获取实体详情
+GET    /api/knowledge/entity/search  # 搜索实体
+POST   /api/knowledge/entity          # 创建实体(需登录)
+PUT    /api/knowledge/entity/{id}      # 更新实体(需登录)
+
+## 关系管理
+GET    /api/knowledge/relation/{id}   # 获取关系详情
+POST   /api/knowledge/relation         # 创建关系(需登录)
+DELETE /api/knowledge/relation/{id}   # 删除关系(需登录)
+
+## 图谱查询
+GET    /api/knowledge/graph           # 获取实体图谱(某实体及其关联)
+GET    /api/knowledge/graph/player/{id}   # 获取球员图谱
+GET    /api/knowledge/graph/team/{id}     # 获取球队图谱
+GET    /api/knowledge/path?from={id}&to={id} # 查询两实体间路径
+
+## 知识浏览
+GET    /api/knowledge/types           # 获取所有实体类型
+GET    /api/knowledge/type/{type}     # 按类型浏览实体
+GET    /api/knowledge/featured        # 精选推荐
+```
+
+### 技术实现
+
+```
+1. 实体抽取：从帖子/评论中自动抽取排球相关实体(球员名、球队名等)
+2. 关系推理：基于用户行为推断实体关系(同队球员、共参加赛事等)
+3. 图数据库：可选用 Neo4j 存储图数据，或使用 MySQL + 邻接表
+4. 搜索优化：ElasticSearch 索引实体名称和描述
+5. 前端展示：图谱可视化(节点-边网络图)
+```
+
+---
+
+## 未来功能展望
+
+### 短期规划
+- 管理员后台开发
+- 内容举报/审核系统
+- 数据统计面板
+
+### 中期规划
+- 知识图谱基础功能
+- 智能推荐(推荐赛事/用户/内容)
+- 全文搜索优化
+
+### 长期愿景
+- AI辅助问答(排球知识问答)
+- 赛事预测/分析
+- 虚拟比赛解说
+- 排球教学视频库
