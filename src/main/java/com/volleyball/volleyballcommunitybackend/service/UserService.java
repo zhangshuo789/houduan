@@ -67,6 +67,24 @@ public class UserService {
         return new UserProfileStatsResponse(followCount, followerCount, postCount, friendCount);
     }
 
+    public Page<FeedResponse> getUserPosts(Long userId, Pageable pageable, HttpServletRequest request) {
+        return postRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+                .map(post -> {
+                    FeedResponse feed = new FeedResponse();
+                    feed.setPostId(post.getId());
+                    feed.setTitle(post.getTitle());
+                    feed.setCreatedAt(post.getCreatedAt());
+                    User user = userRepository.findById(post.getUserId())
+                            .orElseThrow(() -> new RuntimeException("用户不存在"));
+                    String avatarUrl = getAvatarUrl(user, request);
+                    feed.setUser(new UserResponse(
+                            user.getId(), user.getUsername(), user.getNickname(),
+                            avatarUrl, user.getBio(), user.getCreatedAt(), null
+                    ));
+                    return feed;
+                });
+    }
+
     public Page<FeedResponse> getUserFeed(Long userId, Pageable pageable, HttpServletRequest request) {
         // 查询该用户关注的人的帖子
         Page<Follow> following = followService.getFollowingForFeed(userId, pageable);

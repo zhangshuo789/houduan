@@ -257,6 +257,59 @@ GET /api/user/{id}/feed
 
 ---
 
+### 获取用户发帖列表
+
+```
+GET /api/user/{id}/posts
+```
+
+**路径参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | long | 用户ID |
+
+**查询参数**：
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| page | int | 否 | 0 | 页码（从0开始） |
+| size | int | 否 | 10 | 每页数量 |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "content": [
+      {
+        "postId": 1,
+        "title": "帖子标题",
+        "user": {
+          "id": 1,
+          "username": "user1",
+          "nickname": "排球小子",
+          "avatar": "http://localhost:8080/api/file/1",
+          "bio": "热爱排球",
+          "createdAt": "2026-04-01T10:00:00"
+        },
+        "createdAt": "2026-04-01T10:00:00"
+      }
+    ],
+    "totalElements": 100,
+    "totalPages": 10,
+    "number": 0,
+    "size": 10
+  }
+}
+```
+
+**说明**：返回该用户的发帖列表，按时间倒序排列
+
+---
+
 ### 获取用户关注列表
 
 ```

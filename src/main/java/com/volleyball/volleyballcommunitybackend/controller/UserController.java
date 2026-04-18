@@ -60,4 +60,13 @@ public class UserController {
         Page<FeedResponse> feed = userService.getUserFeed(id, pageable, request);
         return ResponseEntity.ok(ApiResponse.success(feed));
     }
+
+    @GetMapping("/{id}/posts")
+    public ResponseEntity<ApiResponse<Page<FeedResponse>>> getUserPosts(
+            @PathVariable Long id,
+            Pageable pageable,
+            HttpServletRequest request) {
+        Page<FeedResponse> posts = userService.getUserPosts(id, pageable, request);
+        return ResponseEntity.ok(ApiResponse.success(posts));
+    }
 }
