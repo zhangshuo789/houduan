@@ -55,7 +55,7 @@ public class EventService {
         event.setTitle(request.getTitle());
         event.setDescription(request.getDescription());
         event.setType(request.getType());
-        event.setStatus("PREPARING");
+        event.setStatus("REGISTERING");
         event.setStartTime(request.getStartTime());
         event.setEndTime(request.getEndTime());
         event.setLocation(request.getLocation());
@@ -126,6 +126,25 @@ public class EventService {
         Event event = eventRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("赛事不存在"));
         eventRepository.delete(event);
+    }
+
+    @Transactional
+    public void cancelEvent(Long id, Long userId, boolean isAdmin) {
+        Event event = eventRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("赛事不存在"));
+
+        // 非管理员只能取消自己的赛事
+        if (!isAdmin && !event.getCreatedBy().equals(userId)) {
+            throw new RuntimeException("无权取消此赛事");
+        }
+
+        // 已结束或已取消的赛事不能再取消
+        if ("ENDED".equals(event.getStatus()) || "CANCELLED".equals(event.getStatus())) {
+            throw new RuntimeException("该赛事已结束或已取消");
+        }
+
+        event.setStatus("CANCELLED");
+        eventRepository.save(event);
     }
 
     public Page<EventResponse> getSubscriptionsByUserId(Long userId, Pageable pageable, HttpServletRequest request) {

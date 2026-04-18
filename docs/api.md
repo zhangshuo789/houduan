@@ -2026,9 +2026,8 @@ GET /api/user/{id}/subscriptions
 
 | 原状态 | 新状态 | 触发条件 |
 |--------|--------|----------|
-| PREPARING | REGISTERING | 当前时间 >= registration_deadline（报名开始时间） |
-| REGISTERING | IN_PROGRESS | 当前时间 >= start_time（赛事开始时间） |
-| IN_PROGRESS | ENDED | 当前时间 >= end_time（赛事结束时间） |
+| REGISTERING | IN_PROGRESS | 当前时间 >= start_time（赛事开始） |
+| IN_PROGRESS | ENDED | 当前时间 >= end_time（赛事结束） |
 
 状态变更后，会通过 SSE 事件 `eventStatusChanged` 推送给所有订阅者。
 
@@ -2040,7 +2039,25 @@ GET /api/user/{id}/subscriptions
   "eventTitle": "2026年全国排球联赛",
   "oldStatus": "REGISTERING",
   "newStatus": "IN_PROGRESS",
-  "message": "赛事已开始"
+  "message": "赛事已开始，请准时参加"
+}
+```
+
+### 取消赛事
+
+```
+PUT /api/event/{id}/cancel
+```
+
+**说明**：主办方或管理员可以取消赛事（状态变为 CANCELLED），取消后不能再恢复
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "赛事已取消",
+  "data": null
 }
 ```
 

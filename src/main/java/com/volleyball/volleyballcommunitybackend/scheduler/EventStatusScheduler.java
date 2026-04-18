@@ -35,8 +35,7 @@ public class EventStatusScheduler {
 
     /**
      * 每分钟扫描一次赛事状态
-     * - PREPARING -> REGISTERING: 到达报名开始时间
-     * - REGISTERING -> IN_PROGRESS: 到达赛事开始时间
+     * - REGISTERING -> IN_PROGRESS: 到达赛事开始时间（报名已截止）
      * - IN_PROGRESS -> ENDED: 到达赛事结束时间
      */
     @Scheduled(fixedRate = 60000) // 每分钟执行
@@ -45,25 +44,18 @@ public class EventStatusScheduler {
         LocalDateTime now = LocalDateTime.now();
         log.info("赛事状态监控任务执行，当前时间: {}", now);
 
-        // 1. PREPARING -> REGISTERING
-        processStatusChange(
-            eventRepository.findByStatusAndRegistrationDeadlineBefore("PREPARING", now),
-            "REGISTERING",
-            "赛事报名已开始"
-        );
-
-        // 2. REGISTERING -> IN_PROGRESS
+        // 1. REGISTERING -> IN_PROGRESS（报名已截止，赛事开始）
         processStatusChange(
             eventRepository.findByStatusAndStartTimeBefore("REGISTERING", now),
             "IN_PROGRESS",
-            "赛事已开始"
+            "赛事已开始，请准时参加"
         );
 
-        // 3. IN_PROGRESS -> ENDED
+        // 2. IN_PROGRESS -> ENDED（赛事结束）
         processStatusChange(
             eventRepository.findByStatusAndEndTimeBefore("IN_PROGRESS", now),
             "ENDED",
-            "赛事已结束"
+            "赛事已结束，感谢参与"
         );
     }
 

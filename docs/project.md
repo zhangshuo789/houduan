@@ -524,11 +524,10 @@ LogUtils.clearMdc();
 
 | 状态 | 说明 | 何时变为下一状态 |
 |------|------|-----------------|
-| PREPARING | 筹备中 | registration_deadline 到期时自动变为 REGISTERING |
-| REGISTERING | 报名中 | start_time 到期时自动变为 IN_PROGRESS |
-| IN_PROGRESS | 进行中 | end_time 到期时自动变为 ENDED |
-| ENDED | 已结束 | - |
-| CANCELLED | 已取消 | 管理员手动取消 |
+| REGISTERING | 报名中 | 新建赛事默认状态；start_time 到期时变为 IN_PROGRESS |
+| IN_PROGRESS | 进行中 | start_time 到期时自动变为进行中 |
+| ENDED | 已结束 | end_time 到期时自动变为已结束 |
+| CANCELLED | 已取消 | 主办方或管理员手动取消 |
 
 状态变更时，通过 SSE 事件通知所有订阅者。
 

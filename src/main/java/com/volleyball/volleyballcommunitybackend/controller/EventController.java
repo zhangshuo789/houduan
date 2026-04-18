@@ -68,6 +68,15 @@ public class EventController {
         return ResponseEntity.ok(ApiResponse.success("赛事删除成功", null));
     }
 
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<ApiResponse<Void>> cancelEvent(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long currentUserId = (Long) authentication.getPrincipal();
+        eventService.cancelEvent(id, currentUserId, false);
+        return ResponseEntity.ok(ApiResponse.success("赛事已取消", null));
+    }
+
     @PostMapping("/{id}/subscribe")
     public ResponseEntity<ApiResponse<Void>> subscribeEvent(
             @PathVariable Long id,
