@@ -5,6 +5,7 @@ import com.volleyball.volleyballcommunitybackend.dto.response.ApiResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.EventResponse;
 import com.volleyball.volleyballcommunitybackend.service.EventService;
 import com.volleyball.volleyballcommunitybackend.service.EventSubscriptionService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -44,9 +45,10 @@ public class EventController {
     @PostMapping
     public ResponseEntity<ApiResponse<EventResponse>> createEvent(
             @RequestBody EventRequest request,
-            Authentication authentication) {
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
         Long currentUserId = (Long) authentication.getPrincipal();
-        EventResponse event = eventService.createEvent(request, currentUserId);
+        EventResponse event = eventService.createEvent(request, currentUserId, httpRequest);
         return ResponseEntity.ok(ApiResponse.success("赛事创建成功", event));
     }
 

@@ -50,7 +50,7 @@ public class EventService {
     }
 
     @Transactional
-    public EventResponse createEvent(EventRequest request, Long userId) {
+    public EventResponse createEvent(EventRequest request, Long userId, HttpServletRequest httpRequest) {
         Event event = new Event();
         event.setTitle(request.getTitle());
         event.setDescription(request.getDescription());
@@ -68,7 +68,7 @@ public class EventService {
         event.setCreatedBy(userId);
 
         Event saved = eventRepository.save(event);
-        return toEventResponse(saved, userId, null);
+        return toEventResponse(saved, userId, httpRequest);
     }
 
     @Transactional

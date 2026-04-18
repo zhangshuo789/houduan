@@ -90,16 +90,18 @@ CREATE TABLE IF NOT EXISTS admin_log (
 ALTER TABLE user MODIFY COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 -- -------------------------------------------
--- 修复 sys_user_role 表结构（添加 id 主键列）
+-- 修复 sys_user_role 表结构
+-- 如果没有 id 列，则需要修改表结构
 -- -------------------------------------------
 SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_user_role' AND COLUMN_NAME = 'id');
-SET @sqlstmt := IF(@exist > 0, 'SELECT 1', 'ALTER TABLE sys_user_role ADD COLUMN id BIGINT AUTO_INCREMENT PRIMARY KEY FIRST');
+SET @sqlstmt := IF(@exist > 0, 'SELECT 1',
+    'ALTER TABLE sys_user_role MODIFY COLUMN role_id BIGINT NOT NULL, DROP PRIMARY KEY, ADD COLUMN id BIGINT AUTO_INCREMENT PRIMARY KEY FIRST');
 PREPARE stmt FROM @sqlstmt;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
--- 如果唯一约束不存在则添加
+-- 添加唯一约束（如果不存在）
 SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_user_role'
                AND INDEX_NAME = 'uk_user_role');
