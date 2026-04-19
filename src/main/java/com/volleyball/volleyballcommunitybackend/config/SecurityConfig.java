@@ -72,9 +72,9 @@ public class SecurityConfig {
                    .requestMatchers(HttpMethod.DELETE, "/api/event/{id}").hasRole("ADMIN")
                    .requestMatchers(HttpMethod.POST, "/api/admin/reports").authenticated()  // 提交举报-需登录
                    .requestMatchers(HttpMethod.GET, "/api/admin/reports").hasRole("ADMIN")  // 举报列表-需管理员
+                   .requestMatchers(HttpMethod.POST, "/api/admin/notification/send").hasRole("ADMIN")  // 发送通知-需管理员
+                   .requestMatchers("/api/admin/notification/**").authenticated()  // 通知列表/已读-需登录
                    .requestMatchers("/api/admin/**").hasRole("ADMIN")  // 其他管理员接口
-                   .requestMatchers("/api/admin/notification/send").hasRole("ADMIN")
-                   .requestMatchers("/api/admin/notification/**").authenticated()
                    .requestMatchers(HttpMethod.POST, "/api/event/{id}/subscribe").authenticated()
                    .requestMatchers(HttpMethod.DELETE, "/api/event/{id}/subscribe").authenticated()
                    .requestMatchers(HttpMethod.POST, "/api/event/{id}/register").authenticated()
