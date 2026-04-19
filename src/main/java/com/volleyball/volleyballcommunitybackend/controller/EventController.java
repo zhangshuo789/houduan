@@ -11,6 +11,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/event")
@@ -44,10 +48,40 @@ public class EventController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<EventResponse>> createEvent(
-            @RequestBody EventRequest request,
+            @RequestParam("title") String title,
+            @RequestParam("description") String description,
+            @RequestParam("type") String type,
+            @RequestParam("startTime") LocalDateTime startTime,
+            @RequestParam("endTime") LocalDateTime endTime,
+            @RequestParam("location") String location,
+            @RequestParam(value = "organizer", required = false) String organizer,
+            @RequestParam(value = "requirements", required = false) String requirements,
+            @RequestParam(value = "maxParticipants", required = false) Integer maxParticipants,
+            @RequestParam(value = "fee", required = false) BigDecimal fee,
+            @RequestParam(value = "contactInfo", required = false) String contactInfo,
+            @RequestParam(value = "registrationDeadline", required = false) LocalDateTime registrationDeadline,
+            @RequestParam(value = "images", required = false) MultipartFile[] images,
             Authentication authentication,
             HttpServletRequest httpRequest) {
+
         Long currentUserId = (Long) authentication.getPrincipal();
+
+        // 构建 EventRequest
+        EventRequest request = new EventRequest();
+        request.setTitle(title);
+        request.setDescription(description);
+        request.setType(type);
+        request.setStartTime(startTime);
+        request.setEndTime(endTime);
+        request.setLocation(location);
+        request.setOrganizer(organizer);
+        request.setRequirements(requirements);
+        request.setMaxParticipants(maxParticipants);
+        request.setFee(fee);
+        request.setContactInfo(contactInfo);
+        request.setRegistrationDeadline(registrationDeadline);
+        request.setImages(images);
+
         EventResponse event = eventService.createEvent(request, currentUserId, httpRequest);
         return ResponseEntity.ok(ApiResponse.success("赛事创建成功", event));
     }

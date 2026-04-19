@@ -2,6 +2,7 @@ package com.volleyball.volleyballcommunitybackend.service;
 
 import com.volleyball.volleyballcommunitybackend.dto.request.EventRequest;
 import com.volleyball.volleyballcommunitybackend.dto.response.EventResponse;
+import com.volleyball.volleyballcommunitybackend.dto.response.FileResponse;
 import com.volleyball.volleyballcommunitybackend.entity.Event;
 import com.volleyball.volleyballcommunitybackend.entity.EventImage;
 import com.volleyball.volleyballcommunitybackend.entity.User;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -69,9 +71,14 @@ public class EventService {
 
         Event saved = eventRepository.save(event);
 
-        // 保存图片URL
-        if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
-            saveEventImages(saved, request.getImageUrls());
+        // 处理上传的图片文件
+        if (request.getImages() != null && request.getImages().length > 0) {
+            for (MultipartFile image : request.getImages()) {
+                if (!image.isEmpty()) {
+                    var fileResponse = fileService.uploadFile(image, "post_image", userId, httpRequest);
+                    saveEventImage(saved, fileResponse.getUrl());
+                }
+            }
         }
 
         return toEventResponse(saved, userId, httpRequest);
@@ -254,5 +261,13 @@ public class EventService {
             image.setSortOrder(i);
             eventImageRepository.save(image);
         }
+    }
+
+    private void saveEventImage(Event event, String imageUrl) {
+        EventImage image = new EventImage();
+        image.setEvent(event);
+        image.setImageUrl(imageUrl);
+        image.setSortOrder(0);
+        eventImageRepository.save(image);
     }
 }

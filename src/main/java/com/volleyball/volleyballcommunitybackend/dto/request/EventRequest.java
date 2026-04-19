@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,5 +37,6 @@ public class EventRequest {
     private BigDecimal fee;
     private String contactInfo;
     private LocalDateTime registrationDeadline;
-    private List<String> imageUrls;
+    private List<String> imageUrls;  // 用于更新时传递已有图片URL
+    private MultipartFile[] images;  // 创建赛事时上传的图片文件
 }
