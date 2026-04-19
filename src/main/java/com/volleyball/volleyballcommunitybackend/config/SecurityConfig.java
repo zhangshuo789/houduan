@@ -76,6 +76,8 @@ public class SecurityConfig {
                    .requestMatchers(HttpMethod.POST, "/api/event/{id}/register").authenticated()
                    .requestMatchers(HttpMethod.GET, "/api/event/{id}/registration").authenticated()
                    .requestMatchers(HttpMethod.PUT, "/api/event/{id}/registration/{regId}").authenticated()
+                   .requestMatchers(HttpMethod.POST, "/api/event/*/images").authenticated()
+                   .requestMatchers(HttpMethod.GET, "/api/event/*/images").permitAll()
                    .requestMatchers(HttpMethod.GET, "/api/user/*/following").permitAll()
                    .requestMatchers(HttpMethod.GET, "/api/user/*/followers").permitAll()
                    .requestMatchers(HttpMethod.GET, "/api/user/*/friends").permitAll()

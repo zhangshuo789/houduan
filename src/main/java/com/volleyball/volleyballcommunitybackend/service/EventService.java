@@ -68,6 +68,12 @@ public class EventService {
         event.setCreatedBy(userId);
 
         Event saved = eventRepository.save(event);
+
+        // 保存图片URL
+        if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
+            saveEventImages(saved, request.getImageUrls());
+        }
+
         return toEventResponse(saved, userId, httpRequest);
     }
 
@@ -115,6 +121,16 @@ public class EventService {
         }
         if (request.getRegistrationDeadline() != null) {
             event.setRegistrationDeadline(request.getRegistrationDeadline());
+        }
+
+        // 更新图片URL
+        if (request.getImageUrls() != null) {
+            // 删除旧图片
+            eventImageRepository.deleteByEventId(event.getId());
+            // 保存新图片
+            if (!request.getImageUrls().isEmpty()) {
+                saveEventImages(event, request.getImageUrls());
+            }
         }
 
         Event saved = eventRepository.save(event);
@@ -227,6 +243,16 @@ public class EventService {
             return fileService.getFileUrl(fileId, request);
         } catch (NumberFormatException e) {
             return avatar;
+        }
+    }
+
+    private void saveEventImages(Event event, List<String> imageUrls) {
+        for (int i = 0; i < imageUrls.size(); i++) {
+            EventImage image = new EventImage();
+            image.setEvent(event);
+            image.setImageUrl(imageUrls.get(i));
+            image.setSortOrder(i);
+            eventImageRepository.save(image);
         }
     }
 }
