@@ -2,6 +2,7 @@ package com.volleyball.volleyballcommunitybackend.config;
 
 import com.volleyball.volleyballcommunitybackend.entity.SysRole;
 import com.volleyball.volleyballcommunitybackend.entity.SysUserRole;
+import com.volleyball.volleyballcommunitybackend.repository.SysRoleRepository;
 import com.volleyball.volleyballcommunitybackend.repository.SysUserRoleRepository;
 import com.volleyball.volleyballcommunitybackend.util.JwtUtil;
 import jakarta.servlet.FilterChain;
@@ -105,10 +106,13 @@ public class SecurityConfig {
 
         private final JwtUtil jwtUtil;
         private final SysUserRoleRepository sysUserRoleRepository;
+        private final SysRoleRepository sysRoleRepository;
 
-        public JwtAuthenticationFilter(JwtUtil jwtUtil, SysUserRoleRepository sysUserRoleRepository) {
+        public JwtAuthenticationFilter(JwtUtil jwtUtil, SysUserRoleRepository sysUserRoleRepository,
+                                       SysRoleRepository sysRoleRepository) {
             this.jwtUtil = jwtUtil;
             this.sysUserRoleRepository = sysUserRoleRepository;
+            this.sysRoleRepository = sysRoleRepository;
         }
 
         @Override
@@ -126,9 +130,10 @@ public class SecurityConfig {
                     List<SysUserRole> userRoles = sysUserRoleRepository.findByUserId(userId);
                     List<GrantedAuthority> authorities = userRoles.stream()
                             .map(ur -> {
-                                SysRole role = new SysRole();
-                                role.setId(ur.getRoleId());
-                                return new SimpleGrantedAuthority("ROLE_" + getRoleName(ur.getRoleId()));
+                                String roleName = sysRoleRepository.findById(ur.getRoleId())
+                                        .map(SysRole::getName)
+                                        .orElse("USER");
+                                return new SimpleGrantedAuthority("ROLE_" + roleName);
                             })
                             .collect(Collectors.toList());
 
@@ -139,11 +144,6 @@ public class SecurityConfig {
             }
 
             filterChain.doFilter(request, response);
-        }
-
-        private String getRoleName(Long roleId) {
-            if (roleId == 1L) return "ADMIN";
-            return "USER";
         }
     }
 }
