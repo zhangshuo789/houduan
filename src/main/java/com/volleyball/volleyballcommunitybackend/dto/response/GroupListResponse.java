@@ -8,12 +8,11 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class GroupResponse {
+public class GroupListResponse {
     private Long id;
     private String name;
     private String description;
-    private String avatar;
-    private String type;
+    private Long ownerId;
     private Integer memberCount;
     private LocalDateTime createdAt;
 }

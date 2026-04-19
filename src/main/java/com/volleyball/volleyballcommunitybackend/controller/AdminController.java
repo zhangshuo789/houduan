@@ -8,6 +8,7 @@ import com.volleyball.volleyballcommunitybackend.dto.request.SetUserStatusReques
 import com.volleyball.volleyballcommunitybackend.dto.request.UpdateEventStatusRequest;
 import com.volleyball.volleyballcommunitybackend.dto.response.ApiResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.ContentStatsResponse;
+import com.volleyball.volleyballcommunitybackend.dto.response.GroupListResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.PendingCountResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.ReportResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.StatsOverviewResponse;
@@ -15,7 +16,6 @@ import com.volleyball.volleyballcommunitybackend.dto.response.UserManagementResp
 import com.volleyball.volleyballcommunitybackend.dto.response.UserStatsResponse;
 import com.volleyball.volleyballcommunitybackend.entity.Event;
 import com.volleyball.volleyballcommunitybackend.entity.EventRegistration;
-import com.volleyball.volleyballcommunitybackend.entity.Message;
 import com.volleyball.volleyballcommunitybackend.service.AdminEventService;
 import com.volleyball.volleyballcommunitybackend.service.AdminGroupService;
 import com.volleyball.volleyballcommunitybackend.service.AdminUserService;
@@ -171,11 +171,11 @@ public class AdminController {
     // ==================== 群聊管理接口 ====================
 
     @GetMapping("/groups")
-    public ResponseEntity<ApiResponse<Page<Message>>> getGroupList(
+    public ResponseEntity<ApiResponse<Page<GroupListResponse>>> getGroupList(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<Message> groups = adminGroupService.getGroupList(pageable);
+        Page<GroupListResponse> groups = adminGroupService.getGroupList(pageable);
         return ResponseEntity.ok(ApiResponse.success(groups));
     }
 

@@ -687,12 +687,14 @@ GET /api/message/unread-count
 
 ---
 
-## 群聊模块 /api/group
+## 群聊模块 /api/groups
+
+> 基础路径已从 `/api/group` 更新为 `/api/groups`
 
 ### 创建群聊
 
 ```
-POST /api/group
+POST /api/groups
 ```
 
 **请求数据**：
@@ -701,7 +703,7 @@ POST /api/group
 |------|------|------|------|
 | name | string | 是 | 群名称 |
 | description | string | 否 | 群描述 |
-| memberIds | array | 是 | 成员ID列表（不含创建者） |
+| memberIds | array | 否 | 成员ID列表（不含创建者，可为空） |
 
 **返回数据**：
 
@@ -712,7 +714,8 @@ POST /api/group
   "data": {
     "id": 1,
     "name": "排球群",
-    "description": "",
+    "description": "排球爱好者群",
+    "avatar": null,
     "type": "group",
     "memberCount": 3,
     "createdAt": "2026-04-01T10:00:00"
@@ -727,7 +730,7 @@ POST /api/group
 ### 获取群信息
 
 ```
-GET /api/group/{id}
+GET /api/groups/{id}
 ```
 
 **路径参数**：
@@ -745,7 +748,8 @@ GET /api/group/{id}
   "data": {
     "id": 1,
     "name": "排球群",
-    "description": "",
+    "description": "排球爱好者群",
+    "avatar": "http://localhost:8080/api/file/1",
     "type": "group",
     "memberCount": 5,
     "createdAt": "2026-04-01T10:00:00"
@@ -755,10 +759,109 @@ GET /api/group/{id}
 
 ---
 
+### 修改群信息
+
+```
+PUT /api/groups/{id}
+```
+
+**路径参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | long | 群聊ID |
+
+**请求数据**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | string | 否 | 群名称（仅群主可修改） |
+| description | string | 否 | 群描述（群主/管理员可修改） |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": {
+    "id": 1,
+    "name": "排球交流群",
+    "description": "更新后的描述",
+    "avatar": null,
+    "type": "group",
+    "memberCount": 5,
+    "createdAt": "2026-04-01T10:00:00"
+  }
+}
+```
+
+**注意**：需要登录，仅群主可修改群名称，管理员只能修改群描述
+
+---
+
+### 修改群头像
+
+```
+PUT /api/groups/{id}/avatar?avatarFileId={fileId}
+```
+
+**路径参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | long | 群聊ID |
+
+**查询参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| avatarFileId | long | 头像文件ID |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": null
+}
+```
+
+**注意**：需要登录，仅群主和管理员可修改
+
+---
+
+### 解散群聊
+
+```
+DELETE /api/groups/{id}
+```
+
+**路径参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | long | 群聊ID |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "解散成功",
+  "data": null
+}
+```
+
+**注意**：需要登录，仅群主可解散群聊
+
+---
+
 ### 获取我的群聊列表
 
 ```
-GET /api/group/my
+GET /api/groups/my
 ```
 
 **权限**：登录用户
@@ -781,7 +884,8 @@ GET /api/group/my
       {
         "id": 1,
         "name": "排球群",
-        "description": "",
+        "description": "排球爱好者群",
+        "avatar": null,
         "type": "group",
         "memberCount": 5,
         "createdAt": "2026-04-01T10:00:00"
@@ -800,7 +904,7 @@ GET /api/group/my
 ### 获取群成员列表
 
 ```
-GET /api/group/{id}/members
+GET /api/groups/{id}/members
 ```
 
 **路径参数**：
@@ -840,10 +944,10 @@ GET /api/group/{id}/members
 
 ---
 
-### 添加群成员
+### 邀请成员
 
 ```
-POST /api/group/{id}/members?userId={userId}
+POST /api/groups/{id}/members?userId={userId}
 ```
 
 **路径参数**：
@@ -856,7 +960,7 @@ POST /api/group/{id}/members?userId={userId}
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| userId | long | 被添加的用户ID |
+| userId | long | 被邀请的用户ID |
 
 **返回数据**：
 
@@ -868,14 +972,14 @@ POST /api/group/{id}/members?userId={userId}
 }
 ```
 
-**注意**：需要登录，仅群主和管理员可添加成员
+**注意**：需要登录，仅群主和管理员可邀请成员
 
 ---
 
-### 移除群成员
+### 移除成员
 
 ```
-DELETE /api/group/{id}/members/{userId}
+DELETE /api/groups/{id}/members/{userId}
 ```
 
 **路径参数**：
@@ -902,7 +1006,7 @@ DELETE /api/group/{id}/members/{userId}
 ### 退群
 
 ```
-POST /api/group/{id}/members/{userId}/leave
+POST /api/groups/{id}/members/{userId}/leave
 ```
 
 **路径参数**：
@@ -910,8 +1014,7 @@ POST /api/group/{id}/members/{userId}/leave
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | id | long | 群聊ID |
-
-**注意**：实际路径为 `/api/group/{id}/members/{userId}/leave`，userId 从 URL 获取但实际使用当前登录用户ID
+| userId | long | 实际使用当前登录用户ID |
 
 **返回数据**：
 
@@ -930,7 +1033,7 @@ POST /api/group/{id}/members/{userId}/leave
 ### 禁言成员
 
 ```
-POST /api/group/{id}/ban/{userId}
+POST /api/groups/{id}/members/{userId}/ban
 ```
 
 **路径参数**：
@@ -957,7 +1060,7 @@ POST /api/group/{id}/ban/{userId}
 ### 解除禁言
 
 ```
-DELETE /api/group/{id}/unban/{userId}
+DELETE /api/groups/{id}/members/{userId}/unban
 ```
 
 **路径参数**：
@@ -981,10 +1084,75 @@ DELETE /api/group/{id}/unban/{userId}
 
 ---
 
+### 设置/取消管理员
+
+```
+POST /api/groups/{id}/members/{userId}/admin?setAdmin=true
+```
+
+**路径参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | long | 群聊ID |
+| userId | long | 目标用户ID |
+
+**查询参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| setAdmin | boolean | true=设置为管理员，false=取消管理员 |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "设置管理员成功",
+  "data": null
+}
+```
+
+**注意**：需要登录，仅群主可设置/取消管理员
+
+---
+
+### 转让群主
+
+```
+POST /api/groups/{id}/transfer?newOwnerId={newOwnerId}
+```
+
+**路径参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | long | 群聊ID |
+
+**查询参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| newOwnerId | long | 新群主用户ID |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "转让成功",
+  "data": null
+}
+```
+
+**注意**：需要登录，仅群主可转让群主身份。转让后原群主变为普通成员
+
+---
+
 ### 获取群聊消息
 
 ```
-GET /api/group/{id}/messages
+GET /api/groups/{id}/messages
 ```
 
 **路径参数**：
@@ -1035,7 +1203,7 @@ GET /api/group/{id}/messages
 ### 发送群消息
 
 ```
-POST /api/group/{id}/messages
+POST /api/groups/{id}/messages
 ```
 
 **路径参数**：
@@ -2414,6 +2582,31 @@ GET /api/admin/groups
 |------|------|------|--------|------|
 | page | int | 否 | 0 | 页码 |
 | size | int | 否 | 10 | 每页数量 |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "content": [
+      {
+        "id": 1,
+        "name": "排球群",
+        "description": "排球爱好者群",
+        "ownerId": 1,
+        "memberCount": 5,
+        "createdAt": "2026-04-01T10:00:00"
+      }
+    ],
+    "totalElements": 20,
+    "totalPages": 2,
+    "number": 0,
+    "size": 10
+  }
+}
+```
 
 #### 更换群主
 

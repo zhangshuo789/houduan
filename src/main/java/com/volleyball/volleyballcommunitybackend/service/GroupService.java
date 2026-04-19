@@ -2,14 +2,20 @@ package com.volleyball.volleyballcommunitybackend.service;
 
 import com.volleyball.volleyballcommunitybackend.dto.request.GroupRequest;
 import com.volleyball.volleyballcommunitybackend.dto.request.MessageRequest;
+import com.volleyball.volleyballcommunitybackend.dto.request.UpdateGroupRequest;
 import com.volleyball.volleyballcommunitybackend.dto.response.GroupMemberResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.GroupResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.MessageResponse;
+import com.volleyball.volleyballcommunitybackend.entity.ChatGroup;
 import com.volleyball.volleyballcommunitybackend.entity.GroupMember;
 import com.volleyball.volleyballcommunitybackend.entity.Message;
 import com.volleyball.volleyballcommunitybackend.entity.MessageRead;
 import com.volleyball.volleyballcommunitybackend.entity.User;
-import com.volleyball.volleyballcommunitybackend.repository.*;
+import com.volleyball.volleyballcommunitybackend.repository.ChatGroupRepository;
+import com.volleyball.volleyballcommunitybackend.repository.GroupMemberRepository;
+import com.volleyball.volleyballcommunitybackend.repository.MessageReadRepository;
+import com.volleyball.volleyballcommunitybackend.repository.MessageRepository;
+import com.volleyball.volleyballcommunitybackend.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -27,16 +33,18 @@ public class GroupService {
     private final MessageRepository messageRepository;
     private final MessageReadRepository messageReadRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final ChatGroupRepository chatGroupRepository;
     private final UserRepository userRepository;
     private final SseService sseService;
     private final FileService fileService;
 
     public GroupService(MessageRepository messageRepository, MessageReadRepository messageReadRepository,
-                        GroupMemberRepository groupMemberRepository, UserRepository userRepository,
-                        SseService sseService, FileService fileService) {
+                        GroupMemberRepository groupMemberRepository, ChatGroupRepository chatGroupRepository,
+                        UserRepository userRepository, SseService sseService, FileService fileService) {
         this.messageRepository = messageRepository;
         this.messageReadRepository = messageReadRepository;
         this.groupMemberRepository = groupMemberRepository;
+        this.chatGroupRepository = chatGroupRepository;
         this.userRepository = userRepository;
         this.sseService = sseService;
         this.fileService = fileService;
@@ -44,19 +52,14 @@ public class GroupService {
 
     @Transactional
     public GroupResponse createGroup(Long creatorId, GroupRequest request) {
-        // 创建群聊会话
-        Message groupMessage = new Message();
-        groupMessage.setSenderId(creatorId);
-        groupMessage.setType("group");
-        groupMessage.setContent("群聊创建");
-        groupMessage.setTargetId(0L); // 临时占位
-        Message saved = messageRepository.save(groupMessage);
+        // 创建群组
+        ChatGroup group = new ChatGroup();
+        group.setName(request.getName());
+        group.setDescription(request.getDescription());
+        group.setOwnerId(creatorId);
+        ChatGroup saved = chatGroupRepository.save(group);
 
         Long groupId = saved.getId();
-
-        // 更新群ID（因为我们用message id作为group id）
-        groupMessage.setTargetId(groupId);
-        messageRepository.save(groupMessage);
 
         // 创建者加群
         GroupMember ownerMember = new GroupMember();
@@ -82,8 +85,8 @@ public class GroupService {
 
         GroupResponse response = new GroupResponse();
         response.setId(groupId);
-        response.setName(request.getName());
-        response.setDescription(request.getDescription());
+        response.setName(saved.getName());
+        response.setDescription(saved.getDescription());
         response.setType("group");
         response.setMemberCount(memberCount);
         response.setCreatedAt(saved.getCreatedAt());
@@ -91,19 +94,92 @@ public class GroupService {
     }
 
     public GroupResponse getGroupInfo(Long groupId) {
-        Message groupMessage = messageRepository.findById(groupId)
+        ChatGroup group = chatGroupRepository.findById(groupId)
                 .orElseThrow(() -> new RuntimeException("群聊不存在"));
 
         long memberCount = groupMemberRepository.countByGroupId(groupId);
 
         GroupResponse response = new GroupResponse();
         response.setId(groupId);
-        response.setName(groupMessage.getContent()); // 复用content存群名
-        response.setDescription("");
+        response.setName(group.getName());
+        response.setDescription(group.getDescription());
+        response.setAvatar(getAvatarUrl(group.getAvatar()));
         response.setType("group");
         response.setMemberCount((int) memberCount);
-        response.setCreatedAt(groupMessage.getCreatedAt());
+        response.setCreatedAt(group.getCreatedAt());
         return response;
+    }
+
+    @Transactional
+    public GroupResponse updateGroup(Long operatorId, Long groupId, UpdateGroupRequest request) {
+        ChatGroup group = chatGroupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("群聊不存在"));
+
+        // 检查权限：群主或管理员可修改
+        GroupMember operator = groupMemberRepository.findByGroupIdAndUserId(groupId, operatorId)
+                .orElseThrow(() -> new RuntimeException("你不是群成员"));
+
+        if (!"OWNER".equals(operator.getRole()) && !"ADMIN".equals(operator.getRole())) {
+            throw new RuntimeException("只有群主和管理员可以修改群信息");
+        }
+
+        // 群主可修改所有信息，管理员只能修改部分
+        if (request.getName() != null && !"OWNER".equals(operator.getRole())) {
+            throw new RuntimeException("只有群主可以修改群名称");
+        }
+
+        if (request.getName() != null) {
+            group.setName(request.getName());
+        }
+        if (request.getDescription() != null) {
+            group.setDescription(request.getDescription());
+        }
+        chatGroupRepository.save(group);
+
+        long memberCount = groupMemberRepository.countByGroupId(groupId);
+
+        GroupResponse response = new GroupResponse();
+        response.setId(groupId);
+        response.setName(group.getName());
+        response.setDescription(group.getDescription());
+        response.setAvatar(getAvatarUrl(group.getAvatar()));
+        response.setType("group");
+        response.setMemberCount((int) memberCount);
+        response.setCreatedAt(group.getCreatedAt());
+        return response;
+    }
+
+    @Transactional
+    public void updateGroupAvatar(Long operatorId, Long groupId, String avatarFileId) {
+        ChatGroup group = chatGroupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("群聊不存在"));
+
+        // 检查权限：群主或管理员
+        GroupMember operator = groupMemberRepository.findByGroupIdAndUserId(groupId, operatorId)
+                .orElseThrow(() -> new RuntimeException("你不是群成员"));
+
+        if (!"OWNER".equals(operator.getRole()) && !"ADMIN".equals(operator.getRole())) {
+            throw new RuntimeException("只有群主和管理员可以修改群头像");
+        }
+
+        group.setAvatar(avatarFileId);
+        chatGroupRepository.save(group);
+    }
+
+    @Transactional
+    public void deleteGroup(Long operatorId, Long groupId) {
+        ChatGroup group = chatGroupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("群聊不存在"));
+
+        // 只有群主可以解散群
+        if (!group.getOwnerId().equals(operatorId)) {
+            throw new RuntimeException("只有群主可以解散群聊");
+        }
+
+        // 删除所有群成员
+        groupMemberRepository.deleteByGroupId(groupId);
+        // 删除群组
+        chatGroupRepository.delete(group);
     }
 
     public List<GroupMemberResponse> getGroupMembers(Long groupId, HttpServletRequest request) {
@@ -193,6 +269,51 @@ public class GroupService {
     }
 
     @Transactional
+    public void setAdmin(Long operatorId, Long groupId, Long targetUserId, boolean setAdmin) {
+        GroupMember operator = groupMemberRepository.findByGroupIdAndUserId(groupId, operatorId)
+                .orElseThrow(() -> new RuntimeException("你不是群成员"));
+
+        // 只有群主可以设置管理员
+        if (!"OWNER".equals(operator.getRole())) {
+            throw new RuntimeException("只有群主可以设置管理员");
+        }
+
+        GroupMember target = groupMemberRepository.findByGroupIdAndUserId(groupId, targetUserId)
+                .orElseThrow(() -> new RuntimeException("该用户不在群中"));
+
+        target.setRole(setAdmin ? "ADMIN" : "MEMBER");
+        groupMemberRepository.save(target);
+    }
+
+    @Transactional
+    public void transferOwner(Long operatorId, Long groupId, Long newOwnerId) {
+        ChatGroup group = chatGroupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("群聊不存在"));
+
+        // 只有群主可以转让
+        if (!group.getOwnerId().equals(operatorId)) {
+            throw new RuntimeException("只有群主可以转让群");
+        }
+
+        GroupMember newOwnerMember = groupMemberRepository.findByGroupIdAndUserId(groupId, newOwnerId)
+                .orElseThrow(() -> new RuntimeException("该用户不在群中"));
+
+        // 将新群主设为ADMIN
+        newOwnerMember.setRole("ADMIN");
+        groupMemberRepository.save(newOwnerMember);
+
+        // 将原群主改为MEMBER
+        GroupMember ownerMember = groupMemberRepository.findByGroupIdAndUserId(groupId, operatorId)
+                .orElseThrow(() -> new RuntimeException("你是群主但不在群中"));
+        ownerMember.setRole("MEMBER");
+        groupMemberRepository.save(ownerMember);
+
+        // 更新群的ownerId
+        group.setOwnerId(newOwnerId);
+        chatGroupRepository.save(group);
+    }
+
+    @Transactional
     public MessageResponse sendGroupMessage(Long senderId, Long groupId, MessageRequest request, HttpServletRequest httpRequest) {
         GroupMember member = groupMemberRepository.findByGroupIdAndUserId(groupId, senderId)
                 .orElseThrow(() -> new RuntimeException("你不是群成员"));
@@ -250,16 +371,17 @@ public class GroupService {
 
         List<GroupResponse> groups = groupIds.stream()
                 .map(groupId -> {
-                    Message groupMessage = messageRepository.findById(groupId)
+                    ChatGroup group = chatGroupRepository.findById(groupId)
                             .orElseThrow(() -> new RuntimeException("群聊不存在"));
                     long memberCount = groupMemberRepository.countByGroupId(groupId);
                     GroupResponse response = new GroupResponse();
                     response.setId(groupId);
-                    response.setName(groupMessage.getContent());
-                    response.setDescription("");
+                    response.setName(group.getName());
+                    response.setDescription(group.getDescription());
+                    response.setAvatar(getAvatarUrl(group.getAvatar()));
                     response.setType("group");
                     response.setMemberCount((int) memberCount);
-                    response.setCreatedAt(groupMessage.getCreatedAt());
+                    response.setCreatedAt(group.getCreatedAt());
                     return response;
                 })
                 .collect(Collectors.toList());
@@ -281,7 +403,7 @@ public class GroupService {
         GroupMemberResponse response = new GroupMemberResponse();
         response.setUserId(user.getId());
         response.setNickname(user.getNickname());
-        response.setAvatar(getAvatarUrl(user, request));
+        response.setAvatar(getAvatarUrl(user.getAvatar()));
         response.setRole(member.getRole());
         response.setBanned(member.getBanned());
         response.setJoinedAt(member.getJoinedAt());
@@ -296,7 +418,7 @@ public class GroupService {
                 message.getId(),
                 sender.getId(),
                 sender.getNickname(),
-                getAvatarUrl(sender, request),
+                getAvatarUrl(sender.getAvatar()),
                 message.getType(),
                 message.getTargetId(),
                 message.getContent(),
@@ -305,15 +427,15 @@ public class GroupService {
         );
     }
 
-    private String getAvatarUrl(User user, HttpServletRequest request) {
-        if (user.getAvatar() == null || user.getAvatar().isEmpty()) {
+    private String getAvatarUrl(String avatar) {
+        if (avatar == null || avatar.isEmpty()) {
             return null;
         }
         try {
-            Long fileId = Long.parseLong(user.getAvatar());
-            return fileService.getFileUrl(fileId, request);
+            Long fileId = Long.parseLong(avatar);
+            return "/api/file/" + fileId;
         } catch (NumberFormatException e) {
-            return user.getAvatar();
+            return avatar;
         }
     }
 }

@@ -178,11 +178,22 @@
 | is_read | BOOLEAN | 是否已读 |
 | sent_at | DATETIME | 发送时间 |
 
-#### GroupMember 群成员表
+#### ChatGroup 群组表
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | id | BIGINT | 主键 |
-| group_id | BIGINT | 群ID |
+| name | VARCHAR(50) | 群名称 |
+| description | VARCHAR(255) | 群描述 |
+| avatar | VARCHAR(255) | 群头像（文件ID） |
+| owner_id | BIGINT | 群主ID |
+| created_at | DATETIME | 创建时间 |
+| updated_at | DATETIME | 更新时间 |
+
+#### GroupMember 群成员表（chat_group_member）
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键 |
+| group_id | BIGINT | 群ID（关联 chat_group.id） |
 | user_id | BIGINT | 用户ID |
 | role | VARCHAR(20) | 角色（OWNER/ADMIN/MEMBER） |
 | banned | BOOLEAN | 是否被禁言 |
@@ -647,18 +658,23 @@ GET    /api/admin/events                  # 赛事列表(所有类型)
 PUT    /api/admin/events/{id}/status      # 修改赛事状态
 GET    /api/admin/events/{id}/registrations # 赛事报名列表
 
-## 群聊功能
-POST   /api/group                          # 创建群聊
-GET    /api/group/my                      # 获取我的群聊列表
-GET    /api/group/{id}                   # 获取群信息
-GET    /api/group/{id}/members            # 获取群成员列表
-POST   /api/group/{id}/members            # 添加群成员
-DELETE /api/group/{id}/members/{userId}   # 移除群成员
-POST   /api/group/{id}/members/{userId}/leave # 退群
-POST   /api/group/{id}/ban/{userId}      # 禁言成员
-DELETE /api/group/{id}/unban/{userId}     # 解除禁言
-GET    /api/group/{id}/messages          # 获取群消息列表
-POST   /api/group/{id}/messages          # 发送群消息
+## 群聊功能（用户端）
+POST   /api/groups                          # 创建群聊
+GET    /api/groups/my                      # 获取我的群聊列表
+GET    /api/groups/{id}                   # 获取群信息
+PUT    /api/groups/{id}                   # 修改群信息（群主/管理员）
+PUT    /api/groups/{id}/avatar            # 修改群头像（群主/管理员）
+DELETE /api/groups/{id}                   # 解散群聊（群主）
+GET    /api/groups/{id}/members            # 获取群成员列表
+POST   /api/groups/{id}/members            # 邀请成员（群主/管理员）
+DELETE /api/groups/{id}/members/{userId}   # 移除成员（群主）
+POST   /api/groups/{id}/members/{userId}/leave # 退群
+POST   /api/groups/{id}/members/{userId}/ban # 禁言成员（群主/管理员）
+DELETE /api/groups/{id}/members/{userId}/unban # 解除禁言（群主/管理员）
+POST   /api/groups/{id}/members/{userId}/admin # 设置/取消管理员（群主）
+POST   /api/groups/{id}/transfer           # 转让群主（群主）
+GET    /api/groups/{id}/messages          # 获取群消息列表
+POST   /api/groups/{id}/messages          # 发送群消息
 
 ## 管理员群聊管理
 GET    /api/admin/groups                   # 群列表

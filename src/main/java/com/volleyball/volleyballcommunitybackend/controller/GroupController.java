@@ -2,6 +2,7 @@ package com.volleyball.volleyballcommunitybackend.controller;
 
 import com.volleyball.volleyballcommunitybackend.dto.request.GroupRequest;
 import com.volleyball.volleyballcommunitybackend.dto.request.MessageRequest;
+import com.volleyball.volleyballcommunitybackend.dto.request.UpdateGroupRequest;
 import com.volleyball.volleyballcommunitybackend.dto.response.ApiResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.GroupMemberResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.GroupResponse;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
+@RequestMapping("/api/groups")
 public class GroupController {
 
     private final GroupService groupService;
@@ -26,7 +28,7 @@ public class GroupController {
         this.groupService = groupService;
     }
 
-    @PostMapping("/api/group")
+    @PostMapping
     public ResponseEntity<ApiResponse<GroupResponse>> createGroup(
             @Valid @RequestBody GroupRequest request,
             Authentication authentication) {
@@ -35,7 +37,7 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success("创建成功", group));
     }
 
-    @GetMapping("/api/group/my")
+    @GetMapping("/my")
     public ResponseEntity<ApiResponse<Page<GroupResponse>>> getMyGroups(
             Pageable pageable,
             Authentication authentication) {
@@ -44,13 +46,42 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success(groups));
     }
 
-    @GetMapping("/api/group/{id}")
+    @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<GroupResponse>> getGroupInfo(@PathVariable Long id) {
         GroupResponse group = groupService.getGroupInfo(id);
         return ResponseEntity.ok(ApiResponse.success(group));
     }
 
-    @GetMapping("/api/group/{id}/members")
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<GroupResponse>> updateGroup(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateGroupRequest request,
+            Authentication authentication) {
+        Long currentUserId = (Long) authentication.getPrincipal();
+        GroupResponse group = groupService.updateGroup(currentUserId, id, request);
+        return ResponseEntity.ok(ApiResponse.success("更新成功", group));
+    }
+
+    @PutMapping("/{id}/avatar")
+    public ResponseEntity<ApiResponse<Void>> updateGroupAvatar(
+            @PathVariable Long id,
+            @RequestParam String avatarFileId,
+            Authentication authentication) {
+        Long currentUserId = (Long) authentication.getPrincipal();
+        groupService.updateGroupAvatar(currentUserId, id, avatarFileId);
+        return ResponseEntity.ok(ApiResponse.success("更新成功", null));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteGroup(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long currentUserId = (Long) authentication.getPrincipal();
+        groupService.deleteGroup(currentUserId, id);
+        return ResponseEntity.ok(ApiResponse.success("解散成功", null));
+    }
+
+    @GetMapping("/{id}/members")
     public ResponseEntity<ApiResponse<List<GroupMemberResponse>>> getGroupMembers(
             @PathVariable Long id,
             HttpServletRequest request) {
@@ -58,7 +89,7 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success(members));
     }
 
-    @PostMapping("/api/group/{id}/members")
+    @PostMapping("/{id}/members")
     public ResponseEntity<ApiResponse<Void>> addMember(
             @PathVariable Long id,
             @RequestParam Long userId,
@@ -68,7 +99,7 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success("添加成功", null));
     }
 
-    @DeleteMapping("/api/group/{id}/members/{userId}")
+    @DeleteMapping("/{id}/members/{userId}")
     public ResponseEntity<ApiResponse<Void>> removeMember(
             @PathVariable Long id,
             @PathVariable Long userId,
@@ -78,7 +109,7 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success("移除成功", null));
     }
 
-    @PostMapping("/api/group/{id}/members/{userId}/leave")
+    @PostMapping("/{id}/members/{userId}/leave")
     public ResponseEntity<ApiResponse<Void>> leaveGroup(
             @PathVariable Long id,
             Authentication authentication) {
@@ -87,7 +118,7 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success("退群成功", null));
     }
 
-    @PostMapping("/api/group/{id}/ban/{userId}")
+    @PostMapping("/{id}/members/{userId}/ban")
     public ResponseEntity<ApiResponse<Void>> banMember(
             @PathVariable Long id,
             @PathVariable Long userId,
@@ -97,7 +128,7 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success("禁言成功", null));
     }
 
-    @DeleteMapping("/api/group/{id}/unban/{userId}")
+    @DeleteMapping("/{id}/members/{userId}/unban")
     public ResponseEntity<ApiResponse<Void>> unbanMember(
             @PathVariable Long id,
             @PathVariable Long userId,
@@ -107,7 +138,28 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success("解除禁言成功", null));
     }
 
-    @GetMapping("/api/group/{id}/messages")
+    @PostMapping("/{id}/members/{userId}/admin")
+    public ResponseEntity<ApiResponse<Void>> setAdmin(
+            @PathVariable Long id,
+            @PathVariable Long userId,
+            @RequestParam boolean setAdmin,
+            Authentication authentication) {
+        Long currentUserId = (Long) authentication.getPrincipal();
+        groupService.setAdmin(currentUserId, id, userId, setAdmin);
+        return ResponseEntity.ok(ApiResponse.success(setAdmin ? "设置管理员成功" : "取消管理员成功", null));
+    }
+
+    @PostMapping("/{id}/transfer")
+    public ResponseEntity<ApiResponse<Void>> transferOwner(
+            @PathVariable Long id,
+            @RequestParam Long newOwnerId,
+            Authentication authentication) {
+        Long currentUserId = (Long) authentication.getPrincipal();
+        groupService.transferOwner(currentUserId, id, newOwnerId);
+        return ResponseEntity.ok(ApiResponse.success("转让成功", null));
+    }
+
+    @GetMapping("/{id}/messages")
     public ResponseEntity<ApiResponse<Page<MessageResponse>>> getGroupMessages(
             @PathVariable Long id,
             Pageable pageable,
@@ -116,7 +168,7 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success(messages));
     }
 
-    @PostMapping("/api/group/{id}/messages")
+    @PostMapping("/{id}/messages")
     public ResponseEntity<ApiResponse<MessageResponse>> sendGroupMessage(
             @PathVariable Long id,
             @Valid @RequestBody MessageRequest request,

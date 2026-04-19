@@ -64,6 +64,7 @@ public class SecurityConfig {
                    .requestMatchers("/api/follow/**").authenticated()
                    .requestMatchers("/api/message/**").authenticated()
                    .requestMatchers("/api/group/**").authenticated()
+                   .requestMatchers("/api/groups/**").authenticated()
                    .requestMatchers("/api/sse/connect").permitAll()
                    .requestMatchers(HttpMethod.GET, "/api/event").permitAll()
                    .requestMatchers(HttpMethod.GET, "/api/event/{id}").permitAll()

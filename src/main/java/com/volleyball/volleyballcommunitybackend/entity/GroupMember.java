@@ -7,7 +7,10 @@ import lombok.AllArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "group_member", uniqueConstraints = {
+@Table(name = "chat_group_member", indexes = {
+    @Index(name = "idx_group_id", columnList = "group_id"),
+    @Index(name = "idx_user_id", columnList = "user_id")
+}, uniqueConstraints = {
     @UniqueConstraint(columnNames = {"group_id", "user_id"})
 })
 @Data
