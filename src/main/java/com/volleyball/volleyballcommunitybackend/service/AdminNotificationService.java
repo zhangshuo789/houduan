@@ -113,10 +113,36 @@ public class AdminNotificationService {
     }
 
     /**
-     * 获取用户未读通知数量
+     * 获取用户未读通知数量（包括私信和广播）
      */
     public long getUnreadCount(Long userId) {
-        return notificationRepository.countByTargetUserIdAndIsReadFalse(userId);
+        return notificationRepository.countUnreadByUserId(userId);
+    }
+
+    /**
+     * 获取用户通知列表（私信+广播）
+     */
+    public Page<AdminNotification> getUserNotifications(Long userId, Pageable pageable) {
+        // 合并查询私信和广播通知
+        org.springframework.data.domain.Page<AdminNotification> privateNotifications =
+            notificationRepository.findByTargetUserIdAndTypeOrderBySentAtDesc(userId, "PRIVATE", pageable);
+        org.springframework.data.domain.Page<AdminNotification> broadcastNotifications =
+            notificationRepository.findByTypeOrderBySentAtDesc("BROADCAST", pageable);
+
+        // 合并两个列表并按时间倒序
+        java.util.List<AdminNotification> combined = new java.util.ArrayList<>();
+        combined.addAll(privateNotifications.getContent());
+        combined.addAll(broadcastNotifications.getContent());
+        combined.sort((a, b) -> b.getSentAt().compareTo(a.getSentAt()));
+
+        // 分页
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), combined.size());
+        java.util.List<AdminNotification> pageContent = start < combined.size()
+            ? combined.subList(start, end)
+            : java.util.Collections.emptyList();
+
+        return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, combined.size());
     }
 
     /**
@@ -141,7 +167,7 @@ public class AdminNotificationService {
         AdminNotification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new RuntimeException("通知不存在"));
 
-        // 只能标记自己的通知为已读
+        // 只能标记自己的通知为已读（私信），广播通知任何人都可以标记
         if (notification.getTargetUserId() != null && !notification.getTargetUserId().equals(userId)) {
             throw new RuntimeException("无权操作");
         }

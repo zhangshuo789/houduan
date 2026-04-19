@@ -4,6 +4,8 @@ import com.volleyball.volleyballcommunitybackend.entity.AdminNotification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -17,6 +19,7 @@ public interface AdminNotificationRepository extends JpaRepository<AdminNotifica
     // 查询所有广播通知
     Page<AdminNotification> findByTypeOrderBySentAtDesc(String type, Pageable pageable);
 
-    // 查询未读通知数量
-    long countByTargetUserIdAndIsReadFalse(Long userId);
+    // 查询未读通知数量（私信+广播）
+    @Query("SELECT COUNT(n) FROM AdminNotification n WHERE (n.targetUserId = :userId OR n.targetUserId IS NULL) AND n.isRead = false")
+    long countUnreadByUserId(@Param("userId") Long userId);
 }

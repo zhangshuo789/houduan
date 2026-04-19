@@ -46,6 +46,7 @@ public class AdminNotificationController {
 
     /**
      * 获取当前用户的通知列表（用户端接口，所有登录用户可访问）
+     * 包括私信和广播通知
      */
     @GetMapping("/list")
     public ResponseEntity<ApiResponse<Page<AdminNotification>>> getNotifications(
@@ -53,7 +54,7 @@ public class AdminNotificationController {
 
         Long userId = (Long) authentication.getPrincipal();
         Pageable pageable = Pageable.ofSize(20);
-        Page<AdminNotification> notifications = notificationService.getPrivateNotifications(userId, pageable);
+        Page<AdminNotification> notifications = notificationService.getUserNotifications(userId, pageable);
 
         return ResponseEntity.ok(ApiResponse.success(notifications));
     }
