@@ -65,14 +65,18 @@ public class GroupService {
         ownerMember.setRole("OWNER");
         groupMemberRepository.save(ownerMember);
 
-        // 添加其他成员
-        for (Long memberId : request.getMemberIds()) {
-            if (!memberId.equals(creatorId)) {
-                GroupMember member = new GroupMember();
-                member.setGroupId(groupId);
-                member.setUserId(memberId);
-                member.setRole("MEMBER");
-                groupMemberRepository.save(member);
+        // 添加其他成员（可选）
+        int memberCount = 1; // 群主自己
+        if (request.getMemberIds() != null && !request.getMemberIds().isEmpty()) {
+            for (Long memberId : request.getMemberIds()) {
+                if (!memberId.equals(creatorId)) {
+                    GroupMember member = new GroupMember();
+                    member.setGroupId(groupId);
+                    member.setUserId(memberId);
+                    member.setRole("MEMBER");
+                    groupMemberRepository.save(member);
+                    memberCount++;
+                }
             }
         }
 
@@ -81,7 +85,7 @@ public class GroupService {
         response.setName(request.getName());
         response.setDescription(request.getDescription());
         response.setType("group");
-        response.setMemberCount(request.getMemberIds().size() + 1);
+        response.setMemberCount(memberCount);
         response.setCreatedAt(saved.getCreatedAt());
         return response;
     }
