@@ -6,12 +6,17 @@ import com.volleyball.volleyballcommunitybackend.entity.FileEntity;
 import com.volleyball.volleyballcommunitybackend.service.FileService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/file")
@@ -39,12 +44,15 @@ public class FileController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Resource> getFile(@PathVariable Long id) {
+    public ResponseEntity<Resource> getFile(@PathVariable Long id) throws IOException {
         FileEntity fileEntity = fileService.getFileById(id);
         Resource resource = fileService.getFileResource(id);
 
+        // 对文件名进行UTF-8编码，避免中文乱码
+        String encodedFilename = URLEncoder.encode(fileEntity.getFileName(), StandardCharsets.UTF_8);
+
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileEntity.getFileName() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + encodedFilename + "\"")
                 .contentType(MediaType.parseMediaType(fileEntity.getContentType()))
                 .body(resource);
     }
