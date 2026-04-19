@@ -1,5 +1,6 @@
 package com.volleyball.volleyballcommunitybackend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,6 +19,7 @@ public class EventImage {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "event_id", nullable = false)
+    @JsonIgnoreProperties({"event", "images"})
     private Event event;
 
     @Column(name = "image_url", nullable = false)
