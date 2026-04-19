@@ -755,6 +755,48 @@ GET /api/group/{id}
 
 ---
 
+### 获取我的群聊列表
+
+```
+GET /api/group/my
+```
+
+**权限**：登录用户
+
+**查询参数**：
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| page | int | 否 | 0 | 页码（从0开始） |
+| size | int | 否 | 10 | 每页数量 |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "content": [
+      {
+        "id": 1,
+        "name": "排球群",
+        "description": "",
+        "type": "group",
+        "memberCount": 5,
+        "createdAt": "2026-04-01T10:00:00"
+      }
+    ],
+    "totalElements": 10,
+    "totalPages": 1,
+    "number": 0,
+    "size": 10
+  }
+}
+```
+
+---
+
 ### 获取群成员列表
 
 ```

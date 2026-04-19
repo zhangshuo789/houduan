@@ -69,6 +69,19 @@ GroupMemberRepository.countByGroupId 成员数
 return GroupResponse { id, name, description, memberCount, ... }
 ```
 
+### 获取我的群聊列表
+
+```
+GET /api/group/my?page=0&size=10
+Authorization: Bearer <token>
+    ↓
+GroupMemberRepository.findByUserId(userId)
+    ↓
+查询每个群的信息和成员数
+    ↓
+return Page<GroupResponse>
+```
+
 ### 添加群成员
 
 ```
@@ -178,6 +191,24 @@ return Page<MessageResponse>
 {
   "name": "string (1-50字符)",
   "description": "string (可选)"
+}
+```
+
+### GET /api/group/my 获取我的群聊列表
+
+**响应**:
+```json
+{
+  "code": 200,
+  "data": {
+    "content": [
+      { "id": 1, "name": "排球群", "description": "", "memberCount": 5, "createdAt": "..." }
+    ],
+    "totalElements": 10,
+    "totalPages": 1,
+    "number": 0,
+    "size": 10
+  }
 }
 ```
 

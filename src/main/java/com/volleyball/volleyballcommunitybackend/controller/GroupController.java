@@ -35,6 +35,15 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success("创建成功", group));
     }
 
+    @GetMapping("/api/group/my")
+    public ResponseEntity<ApiResponse<Page<GroupResponse>>> getMyGroups(
+            Pageable pageable,
+            Authentication authentication) {
+        Long currentUserId = (Long) authentication.getPrincipal();
+        Page<GroupResponse> groups = groupService.getUserGroups(currentUserId, pageable);
+        return ResponseEntity.ok(ApiResponse.success(groups));
+    }
+
     @GetMapping("/api/group/{id}")
     public ResponseEntity<ApiResponse<GroupResponse>> getGroupInfo(@PathVariable Long id) {
         GroupResponse group = groupService.getGroupInfo(id);

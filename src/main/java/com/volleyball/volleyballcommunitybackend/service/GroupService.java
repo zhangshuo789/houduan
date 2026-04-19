@@ -12,6 +12,7 @@ import com.volleyball.volleyballcommunitybackend.entity.User;
 import com.volleyball.volleyballcommunitybackend.repository.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -228,6 +229,45 @@ public class GroupService {
     public Page<MessageResponse> getGroupMessages(Long groupId, Pageable pageable, HttpServletRequest request) {
         return messageRepository.findByTypeAndTargetIdOrderByCreatedAtDesc("group", groupId, pageable)
                 .map(message -> toMessageResponse(message, request));
+    }
+
+    /**
+     * 获取用户已加入的群聊列表
+     */
+    public Page<GroupResponse> getUserGroups(Long userId, Pageable pageable) {
+        List<GroupMember> memberships = groupMemberRepository.findByUserId(userId);
+        List<Long> groupIds = memberships.stream()
+                .map(GroupMember::getGroupId)
+                .collect(Collectors.toList());
+
+        if (groupIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        List<GroupResponse> groups = groupIds.stream()
+                .map(groupId -> {
+                    Message groupMessage = messageRepository.findById(groupId)
+                            .orElseThrow(() -> new RuntimeException("群聊不存在"));
+                    long memberCount = groupMemberRepository.countByGroupId(groupId);
+                    GroupResponse response = new GroupResponse();
+                    response.setId(groupId);
+                    response.setName(groupMessage.getContent());
+                    response.setDescription("");
+                    response.setType("group");
+                    response.setMemberCount((int) memberCount);
+                    response.setCreatedAt(groupMessage.getCreatedAt());
+                    return response;
+                })
+                .collect(Collectors.toList());
+
+        // 分页
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), groups.size());
+        List<GroupResponse> pageContent = start < groups.size()
+            ? groups.subList(start, end)
+            : java.util.Collections.emptyList();
+
+        return new PageImpl<>(pageContent, pageable, groups.size());
     }
 
     private GroupMemberResponse toGroupMemberResponse(GroupMember member, HttpServletRequest request) {
