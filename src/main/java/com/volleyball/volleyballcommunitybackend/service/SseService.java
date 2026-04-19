@@ -65,4 +65,22 @@ public class SseService {
     public void sendRegistrationResult(Long userId, Object data) {
         sendMessageToUser(userId, "registrationResult", data);
     }
+
+    /**
+     * 向所有已连接的用户广播消息
+     */
+    public void broadcast(String eventType, Object data) {
+        for (Map.Entry<Long, CopyOnWriteArrayList<SseEmitter>> entry : userEmitters.entrySet()) {
+            Long userId = entry.getKey();
+            for (SseEmitter emitter : entry.getValue()) {
+                try {
+                    emitter.send(SseEmitter.event()
+                            .name(eventType)
+                            .data(data));
+                } catch (IOException e) {
+                    removeEmitter(userId, emitter);
+                }
+            }
+        }
+    }
 }

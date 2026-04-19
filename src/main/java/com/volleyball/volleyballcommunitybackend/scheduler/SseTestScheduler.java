@@ -7,7 +7,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 @Component
@@ -22,24 +21,25 @@ public class SseTestScheduler {
     }
 
     /**
-     * 测试 SSE 推送 - 每20秒向用户ID=1发送一条测试消息
+     * 测试 SSE 广播 - 每20秒向所有已连接用户发送赛事通知格式的测试消息
      */
     @Scheduled(fixedRate = 20000) // 每20秒执行
     public void sendTestNotification() {
-        Long testUserId = 1L;  // 测试用户ID
-        String message = "测试消息 " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+        String message = "测试赛事通知 " + LocalDateTime.now();
 
         Map<String, Object> data = Map.of(
-                "type", "TEST",
-                "content", message,
-                "time", LocalDateTime.now().toString()
+                "eventId", 999L,
+                "eventTitle", "测试赛事",
+                "oldStatus", "REGISTERING",
+                "newStatus", "IN_PROGRESS",
+                "message", message
         );
 
         try {
-            sseService.sendEventStatusChanged(testUserId, data);
-            log.info("SSE测试消息已发送: {} -> {}", testUserId, message);
+            sseService.broadcast("eventStatusChanged", data);
+            log.info("SSE测试广播已发送: {}", message);
         } catch (Exception e) {
-            log.warn("SSE测试消息发送失败: {}", e.getMessage());
+            log.warn("SSE测试广播发送失败: {}", e.getMessage());
         }
     }
 }
