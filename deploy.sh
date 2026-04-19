@@ -46,8 +46,10 @@ echo "[3/5] 旧容器清理完成"
 
 # 4. 复制 jar 包到服务器
 echo "[4/5] 复制 jar 包到服务器..."
-scp target/volleyball-community-backend-0.0.1.jar root@$HOST_IP:/tmp/app.jar
-ssh root@$HOST_IP "docker build -t $IMAGE_NAME /tmp/app.jar -f - <<EOF
+scp target/volleyball-community-backend-0.0.1-SNAPSHOT.jar root@$HOST_IP:/tmp/app.jar
+
+# 在服务器上创建 Dockerfile 并构建镜像
+ssh root@$HOST_IP "cat > /tmp/Dockerfile << 'EOF'
 FROM openjdk:17-jdk-slim
 WORKDIR /app
 ENV SPRING_PROFILES_ACTIVE=prod
@@ -55,6 +57,7 @@ COPY app.jar /app/app.jar
 ENTRYPOINT [\"java\", \"-jar\", \"/app/app.jar\"]
 EXPOSE 8090
 EOF"
+ssh root@$HOST_IP "docker build -t $IMAGE_NAME -f /tmp/Dockerfile /tmp"
 echo "[4/5] Docker镜像构建完成"
 
 # 5. 启动新容器
