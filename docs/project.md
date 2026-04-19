@@ -647,7 +647,20 @@ GET    /api/admin/events                  # 赛事列表(所有类型)
 PUT    /api/admin/events/{id}/status      # 修改赛事状态
 GET    /api/admin/events/{id}/registrations # 赛事报名列表
 
-## 群聊管理
+## 群聊功能
+POST   /api/group                          # 创建群聊
+GET    /api/group/my                      # 获取我的群聊列表
+GET    /api/group/{id}                   # 获取群信息
+GET    /api/group/{id}/members            # 获取群成员列表
+POST   /api/group/{id}/members            # 添加群成员
+DELETE /api/group/{id}/members/{userId}   # 移除群成员
+POST   /api/group/{id}/members/{userId}/leave # 退群
+POST   /api/group/{id}/ban/{userId}      # 禁言成员
+DELETE /api/group/{id}/unban/{userId}     # 解除禁言
+GET    /api/group/{id}/messages          # 获取群消息列表
+POST   /api/group/{id}/messages          # 发送群消息
+
+## 管理员群聊管理
 GET    /api/admin/groups                   # 群列表
 PUT    /api/admin/groups/{id}/owner       # 更换群主
 DELETE /api/admin/groups/{id}             # 解散违规群
