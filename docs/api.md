@@ -2611,3 +2611,186 @@ GET /api/admin/logs
 |------|------|------|--------|------|
 | page | int | 否 | 0 | 页码 |
 | size | int | 否 | 10 | 每页数量 |
+
+---
+
+## 管理员通知 /api/admin/notification
+
+### 发送通知（仅管理员）
+
+```
+POST /api/admin/notification/send?type=BROADCAST&persist=true
+```
+
+**权限**：仅管理员
+
+**路径参数**：
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| type | string | 否 | BROADCAST | 通知类型：BROADCAST(广播) / PRIVATE(私信) |
+| persist | boolean | 否 | true | 是否存入数据库（仅对BROADCAST有效） |
+
+**请求数据**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| title | string | 是 | 通知标题 |
+| content | string | 是 | 通知内容 |
+| targetUserId | long | type=PRIVATE时必填 | 目标用户ID |
+
+**通知类型说明**：
+
+| type | persist | 行为 |
+|------|---------|------|
+| BROADCAST | true | 存入数据库 + SSE广播，所有在线用户都能收到 |
+| BROADCAST | false | 仅SSE广播，不存数据库 |
+| PRIVATE | - | 存入数据库 + SSE发送给指定用户 |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "通知已发送",
+  "data": null
+}
+```
+
+**SSE推送格式**（事件名：`adminNotification`）：
+
+```json
+{
+  "id": 1234567890,
+  "type": "BROADCAST",
+  "title": "系统维护通知",
+  "content": "服务器将于今晚22:00进行维护升级",
+  "sentAt": "2026-04-19T15:00:00"
+}
+```
+
+### 获取通知列表（用户端）
+
+```
+GET /api/admin/notification/list
+```
+
+**权限**：登录用户
+
+**说明**：返回当前用户的私信通知列表
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "content": [
+      {
+        "id": 1,
+        "type": "PRIVATE",
+        "title": "管理员消息",
+        "content": "您的举报已处理",
+        "targetUserId": 5,
+        "isRead": false,
+        "sentAt": "2026-04-19T15:00:00"
+      }
+    ],
+    "totalElements": 10,
+    "totalPages": 1,
+    "number": 0,
+    "size": 20
+  }
+}
+```
+
+### 获取未读通知数量
+
+```
+GET /api/admin/notification/unread-count
+```
+
+**权限**：登录用户
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "count": 3
+  }
+}
+```
+
+### 标记通知为已读
+
+```
+PUT /api/admin/notification/{id}/read
+```
+
+**权限**：登录用户（只能标记自己的通知）
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "已标记为已读",
+  "data": null
+}
+```
+
+---
+
+## 赛事图片 /api/event/{id}/images
+
+### 上传赛事图片
+
+```
+POST /api/event/{eventId}/images
+```
+
+**权限**：登录用户
+
+**请求参数**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| files | file[] | 是 | 图片文件（支持多张） |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "图片上传成功",
+  "data": [
+    "http://121.40.154.188:8090/api/file/1",
+    "http://121.40.154.188:8090/api/file/2"
+  ]
+}
+```
+
+### 获取赛事图片列表
+
+```
+GET /api/event/{eventId}/images
+```
+
+**权限**：公开
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    "http://121.40.154.188:8090/api/file/1",
+    "http://121.40.154.188:8090/api/file/2"
+  ]
+}
+```

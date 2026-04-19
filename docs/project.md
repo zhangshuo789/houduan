@@ -167,6 +167,17 @@
 
 **约束**：message_id + user_id 唯一
 
+#### AdminNotification 管理员通知表
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键 |
+| type | VARCHAR(20) | 通知类型（BROADCAST/PRIVATE） |
+| title | VARCHAR(100) | 通知标题 |
+| content | TEXT | 通知内容 |
+| target_user_id | BIGINT | 目标用户ID（null表示全体） |
+| is_read | BOOLEAN | 是否已读 |
+| sent_at | DATETIME | 发送时间 |
+
 #### GroupMember 群成员表
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -655,6 +666,12 @@ GET    /api/admin/sensitive-words         # 敏感词列表
 POST   /api/admin/sensitive-words         # 添加敏感词
 PUT    /api/admin/sensitive-words/{id}   # 更新敏感词
 DELETE /api/admin/sensitive-words/{id}   # 删除敏感词
+
+## 管理员通知发布
+POST   /api/admin/notification/send       # 发送通知（广播/私信）
+GET    /api/admin/notification/list       # 获取通知列表
+GET    /api/admin/notification/unread-count # 未读数量
+PUT    /api/admin/notification/{id}/read # 标记已读
 
 ## 操作日志
 GET    /api/admin/logs                    # 操作日志列表
