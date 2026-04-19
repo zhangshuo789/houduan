@@ -52,7 +52,7 @@ public class FileService {
         String storedName = UUID.randomUUID().toString() + extension;
 
         // 构建存储路径
-        String subDir = fileType.equals("avatar") ? "avatars/user_" + userId : fileType + "/";
+        String subDir = fileType.equals("avatar") ? "avatars/user_" + userId + "/" : fileType + "/";
         String fullDir = fileProperties.getBasePath() + "/" + subDir;
         String fullPath = fullDir + storedName;
 
@@ -114,9 +114,14 @@ public class FileService {
     }
 
     /**
-     * 获取当前请求的Base URL（自动适配http/https）
+     * 获取当前请求的Base URL（优先使用配置值）
      */
     private String getBaseUrl(HttpServletRequest request) {
+        // 优先使用配置的值
+        if (fileProperties.getBaseUrl() != null && !fileProperties.getBaseUrl().isEmpty()) {
+            return fileProperties.getBaseUrl();
+        }
+        // 否则动态获取
         String scheme = request.getScheme();
         String host = request.getServerName();
         int port = request.getServerPort();

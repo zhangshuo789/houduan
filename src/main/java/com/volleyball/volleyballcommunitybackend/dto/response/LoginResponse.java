@@ -19,5 +19,6 @@ public class LoginResponse {
         private String username;
         private String nickname;
         private String avatar;
+        private Boolean isAdmin;
     }
 }

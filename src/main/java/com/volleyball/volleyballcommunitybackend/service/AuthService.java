@@ -72,7 +72,8 @@ public class AuthService {
                 user.getId(),
                 user.getUsername(),
                 user.getNickname(),
-                avatarUrl
+                avatarUrl,
+                "admin".equals(user.getUsername())
         );
 
         return new LoginResponse(token, userInfo);
