@@ -87,6 +87,7 @@ public class SecurityConfig {
                    .requestMatchers(HttpMethod.GET, "/api/user/*/followers").permitAll()
                    .requestMatchers(HttpMethod.GET, "/api/user/*/friends").permitAll()
                    .requestMatchers(HttpMethod.GET, "/api/user/*/stats").permitAll()
+                   .requestMatchers("/api/ai/**").authenticated()
                    .anyRequest().authenticated()
            )
            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
