@@ -94,7 +94,6 @@ public class PostService {
 
         post.setTitle(sensitiveWordFilter.filter(request.getTitle()));
         post.setContent(sensitiveWordFilter.filter(request.getContent()));
-        post.setBoardId(request.getBoardId());
 
         Post updatedPost = postRepository.save(post);
 

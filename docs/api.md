@@ -3029,3 +3029,232 @@ GET /api/event/{eventId}/images
   ]
 }
 ```
+
+---
+
+## AI 对话模块 /api/ai/conversations
+
+> 基于 DeepSeek API 的 AI 助手功能，支持多会话、上下文记忆
+
+### 创建会话
+
+```
+POST /api/ai/conversations
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "会话创建成功",
+  "data": {
+    "id": 1,
+    "title": "新对话",
+    "createdAt": "2026-04-27T10:00:00",
+    "updatedAt": "2026-04-27T10:00:00"
+  }
+}
+```
+
+**注意**：需要登录
+
+---
+
+### 获取会话列表
+
+```
+GET /api/ai/conversations
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": 1,
+      "title": "如何提高扣球高度？",
+      "createdAt": "2026-04-27T10:00:00",
+      "updatedAt": "2026-04-27T10:05:00"
+    }
+  ]
+}
+```
+
+**注意**：需要登录，按更新时间倒序排列
+
+---
+
+### 删除会话
+
+```
+DELETE /api/ai/conversations/{id}
+```
+
+**路径参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | long | 会话ID |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "会话已删除",
+  "data": null
+}
+```
+
+**注意**：需要登录，只能删除自己的会话
+
+---
+
+### 获取会话消息列表
+
+```
+GET /api/ai/conversations/{id}/messages
+```
+
+**路径参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | long | 会话ID |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": 1,
+      "role": "user",
+      "content": "如何提高扣球高度？",
+      "thinking": null,
+      "createdAt": "2026-04-27T10:00:00"
+    },
+    {
+      "id": 2,
+      "role": "assistant",
+      "content": "提高扣球高度需要从以下几个方面入手...",
+      "thinking": null,
+      "createdAt": "2026-04-27T10:00:05"
+    }
+  ]
+}
+```
+
+**注意**：需要登录，只能查看自己的会话
+
+---
+
+### 发送消息（非流式）
+
+```
+POST /api/ai/conversations/{id}/messages
+```
+
+**路径参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | long | 会话ID |
+
+**请求数据**：
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| content | string | 是 | | 消息内容 |
+| thinking | boolean | 否 | false | 是否启用 AI 思考过程 |
+| stream | boolean | 否 | false | 是否流式返回（当前仅支持 false） |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": 3,
+    "role": "assistant",
+    "content": "以下是提高扣球高度的建议...",
+    "thinking": null,
+    "createdAt": "2026-04-27T10:00:10"
+  }
+}
+```
+
+**注意**：
+- 需要登录
+- 启用 `thinking=true` 时，返回的 `thinking` 字段包含 AI 的推理过程
+- 系统会自动将历史消息作为上下文传给 AI，实现多轮对话
+
+---
+
+### 发送消息（流式/SSE）
+
+```
+POST /api/ai/conversations/{id}/messages/stream
+```
+
+**路径参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | long | 会话ID |
+
+**请求数据**：
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| content | string | 是 | | 消息内容 |
+| thinking | boolean | 否 | false | 是否启用 AI 思考过程 |
+| stream | boolean | 否 | true | 流式返回标志 |
+
+**返回**：SSE 事件流（`text/event-stream`）
+
+**SSE 事件格式**：
+
+```
+event: message
+data: 你好
+
+event: message
+data: ，我
+
+event: message
+data: 是
+
+event: done
+data:
+
+```
+
+**前端接收示例**：
+
+```javascript
+const eventSource = new EventSource(
+    `/api/ai/conversations/${conversationId}/messages/stream`,
+    {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${jwtToken}`
+        },
+        body: JSON.stringify({ content: '你好', stream: true })
+    }
+);
+```
+
+**说明**：
+- 流式返回时，前端需要手动构建请求
+- `message` 事件：AI 返回的文字片段
+- `done` 事件：AI 回复完成
+- `error` 事件：发生错误

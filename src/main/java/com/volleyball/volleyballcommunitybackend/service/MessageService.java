@@ -9,6 +9,7 @@ import com.volleyball.volleyballcommunitybackend.entity.Message;
 import com.volleyball.volleyballcommunitybackend.entity.MessageRead;
 import com.volleyball.volleyballcommunitybackend.entity.User;
 import com.volleyball.volleyballcommunitybackend.repository.*;
+import com.volleyball.volleyballcommunitybackend.util.SensitiveWordFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,10 +31,12 @@ public class MessageService {
     private final SseService sseService;
     private final PrivacyService privacyService;
     private final FileService fileService;
+    private final SensitiveWordFilter sensitiveWordFilter;
 
     public MessageService(MessageRepository messageRepository, MessageReadRepository messageReadRepository,
                           UserRepository userRepository, FollowRepository followRepository,
-                          SseService sseService, PrivacyService privacyService, FileService fileService) {
+                          SseService sseService, PrivacyService privacyService, FileService fileService,
+                          SensitiveWordFilter sensitiveWordFilter) {
         this.messageRepository = messageRepository;
         this.messageReadRepository = messageReadRepository;
         this.userRepository = userRepository;
@@ -41,6 +44,7 @@ public class MessageService {
         this.sseService = sseService;
         this.privacyService = privacyService;
         this.fileService = fileService;
+        this.sensitiveWordFilter = sensitiveWordFilter;
     }
 
     @Transactional
@@ -65,7 +69,7 @@ public class MessageService {
         message.setSenderId(senderId);
         message.setType("private");
         message.setTargetId(receiverId);
-        message.setContent(request.getContent());
+        message.setContent(sensitiveWordFilter.filter(request.getContent()));
         Message saved = messageRepository.save(message);
 
         // 发送者已读

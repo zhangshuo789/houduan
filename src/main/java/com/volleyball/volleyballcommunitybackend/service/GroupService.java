@@ -16,6 +16,7 @@ import com.volleyball.volleyballcommunitybackend.repository.GroupMemberRepositor
 import com.volleyball.volleyballcommunitybackend.repository.MessageReadRepository;
 import com.volleyball.volleyballcommunitybackend.repository.MessageRepository;
 import com.volleyball.volleyballcommunitybackend.repository.UserRepository;
+import com.volleyball.volleyballcommunitybackend.util.SensitiveWordFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -37,10 +38,12 @@ public class GroupService {
     private final UserRepository userRepository;
     private final SseService sseService;
     private final FileService fileService;
+    private final SensitiveWordFilter sensitiveWordFilter;
 
     public GroupService(MessageRepository messageRepository, MessageReadRepository messageReadRepository,
                         GroupMemberRepository groupMemberRepository, ChatGroupRepository chatGroupRepository,
-                        UserRepository userRepository, SseService sseService, FileService fileService) {
+                        UserRepository userRepository, SseService sseService, FileService fileService,
+                        SensitiveWordFilter sensitiveWordFilter) {
         this.messageRepository = messageRepository;
         this.messageReadRepository = messageReadRepository;
         this.groupMemberRepository = groupMemberRepository;
@@ -48,6 +51,7 @@ public class GroupService {
         this.userRepository = userRepository;
         this.sseService = sseService;
         this.fileService = fileService;
+        this.sensitiveWordFilter = sensitiveWordFilter;
     }
 
     @Transactional
@@ -326,7 +330,7 @@ public class GroupService {
         message.setSenderId(senderId);
         message.setType("group");
         message.setTargetId(groupId);
-        message.setContent(request.getContent());
+        message.setContent(sensitiveWordFilter.filter(request.getContent()));
         Message saved = messageRepository.save(message);
 
         // 所有成员（包括发送者）标记为已读
