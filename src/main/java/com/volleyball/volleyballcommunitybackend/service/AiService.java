@@ -10,6 +10,7 @@ import com.volleyball.volleyballcommunitybackend.entity.AiConversation;
 import com.volleyball.volleyballcommunitybackend.entity.AiMessage;
 import com.volleyball.volleyballcommunitybackend.repository.AiConversationRepository;
 import com.volleyball.volleyballcommunitybackend.repository.AiMessageRepository;
+import com.volleyball.volleyballcommunitybackend.util.MarkdownParser;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,15 +37,18 @@ public class AiService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final ExecutorService executor = Executors.newCachedThreadPool();
+    private final MarkdownParser markdownParser;
 
     public AiService(AiConversationRepository conversationRepository,
                      AiMessageRepository messageRepository,
-                     AiProperties aiProperties) {
+                     AiProperties aiProperties,
+                     MarkdownParser markdownParser) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.aiProperties = aiProperties;
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
+        this.markdownParser = markdownParser;
     }
 
     @Transactional
@@ -114,7 +118,7 @@ public class AiService {
         AiMessage assistantMessage = new AiMessage();
         assistantMessage.setConversationId(conversationId);
         assistantMessage.setRole("assistant");
-        assistantMessage.setContent(assistantContent);
+        assistantMessage.setContent(markdownParser.toPlainText(assistantContent));
         assistantMessage.setThinking(thinking);
         AiMessage saved = messageRepository.save(assistantMessage);
 
@@ -151,12 +155,25 @@ public class AiService {
         // 异步调用流式 API
         executor.submit(() -> {
             try {
-                StringBuilder fullContent = new StringBuilder();
-                String thinking = null;
+                String assistantContent = callDeepSeekStreamApi(messages, request.getThinking(), emitter);
 
-                // 调用流式接口
-                callDeepSeekStreamApi(messages, request.getThinking(), emitter);
+                // 流式结束后，保存助手消息到数据库
+                AiMessage assistantMessage = new AiMessage();
+                assistantMessage.setConversationId(conversationId);
+                assistantMessage.setRole("assistant");
+                assistantMessage.setContent(markdownParser.toPlainText(assistantContent));
+                messageRepository.save(assistantMessage);
 
+                // 更新会话标题
+                AiConversation conv = conversationRepository.findById(conversationId).orElse(null);
+                if (conv != null && conv.getTitle().equals("新对话")) {
+                    conv.setTitle(request.getContent().length() > 20
+                            ? request.getContent().substring(0, 20) + "..."
+                            : request.getContent());
+                    conversationRepository.save(conv);
+                }
+
+                emitter.send(SseEmitter.event().name("done").data(""));
                 emitter.complete();
             } catch (Exception e) {
                 emitter.completeWithError(e);
@@ -220,8 +237,9 @@ public class AiService {
         }
     }
 
-    private void callDeepSeekStreamApi(List<Map<String, String>> messages, Boolean thinking, SseEmitter emitter) {
+    private String callDeepSeekStreamApi(List<Map<String, String>> messages, Boolean thinking, SseEmitter emitter) {
         String urlStr = aiProperties.getBaseUrl() + "/chat/completions";
+        StringBuilder fullContent = new StringBuilder();
 
         try {
             URL url = new URL(urlStr);
@@ -255,7 +273,7 @@ public class AiService {
             if (responseCode != 200) {
                 emitter.send(SseEmitter.event().name("error").data("API请求失败: " + responseCode));
                 emitter.complete();
-                return;
+                return "";
             }
 
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
@@ -271,6 +289,7 @@ public class AiService {
                             JsonNode delta = node.path("choices").path(0).path("delta");
                             String chunkContent = delta.path("content").asText("");
                             if (!chunkContent.isEmpty()) {
+                                fullContent.append(chunkContent);
                                 emitter.send(SseEmitter.event().name("message").data(chunkContent));
                             }
                         } catch (Exception e) {
@@ -280,10 +299,9 @@ public class AiService {
                 }
             }
 
-            emitter.send(SseEmitter.event().name("done").data(""));
-            emitter.complete();
+            return fullContent.toString();
         } catch (Exception e) {
-            emitter.completeWithError(e);
+            throw new RuntimeException(e);
         }
     }
 
