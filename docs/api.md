@@ -3258,3 +3258,342 @@ const eventSource = new EventSource(
 - `message` 事件：AI 返回的文字片段
 - `done` 事件：AI 回复完成
 - `error` 事件：发生错误
+
+---
+
+## 知识图谱模块 /api/knowledge
+
+> 基于 Neo4j 图数据库，存储排球领域实体（球员、球队、比赛、赛事）及其关系，支持图谱可视化和最短路径查询
+
+### 实体类型与属性
+
+| 类型 | 说明 | 特有属性 |
+|------|------|----------|
+| PLAYER | 球员 | position(主攻/副攻/二传/接应/自由人), height, nationality, birthDate |
+| TEAM | 球队 | country, teamType(国家队/俱乐部) |
+| MATCH | 比赛 | matchDate, location, result |
+| TOURNAMENT | 赛事 | year, tournamentType(奥运会/世锦赛/世界杯/联赛) |
+
+### 关系类型
+
+| 关系 | 方向 | 含义 |
+|------|------|------|
+| PLAYS_FOR | Player → Team | 效力于 |
+| PARTICIPATES_IN | Team → Match | 参加比赛 |
+| BELONGS_TO | Match → Tournament | 比赛属于赛事 |
+| COACHES | Player → Team | 执教 |
+| TEAMMATE_OF | Player ↔ Player | 曾是队友 |
+
+### 图谱返回格式
+
+所有图谱查询接口统一返回 nodes + edges 结构，前端可直接用 ECharts / D3.js / vis.js 渲染：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "nodes": [
+      {
+        "elementId": "4:player-uuid:1",
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "朱婷",
+        "type": "PLAYER",
+        "description": "中国女排队长...",
+        "properties": {
+          "position": "主攻",
+          "height": "198cm",
+          "nationality": "中国",
+          "birthDate": "1994-11-29"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "4:player-uuid:1",
+        "to": "4:team-uuid:2",
+        "label": "PLAYS_FOR",
+        "properties": { "number": "2" }
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 获取球员图谱
+
+```
+GET /api/knowledge/graph/player?name=朱婷
+```
+
+**查询参数**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | string | 是 | 球员名称（精确匹配） |
+
+**说明**：自动展开关联的球队、比赛、赛事、队友、教练关系，最多 3 层
+
+---
+
+### 获取球队图谱
+
+```
+GET /api/knowledge/graph/team?name=中国女排
+```
+
+**查询参数**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | string | 是 | 球队名称（精确匹配） |
+
+**说明**：自动展开关联的球员、教练、比赛、赛事，最多 3 层
+
+---
+
+### 查询最短路径
+
+```
+GET /api/knowledge/path?from=朱婷&to=巴西女排
+```
+
+**查询参数**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| from | string | 是 | 起始实体名称 |
+| to | string | 是 | 目标实体名称 |
+
+**说明**：通过任意关系跳转，最多 5 跳。返回路径上的所有节点和关系。未找到路径时返回空 nodes/edges
+
+---
+
+### 搜索实体
+
+```
+GET /api/knowledge/entity/search?keyword=朱&type=PLAYER
+```
+
+**查询参数**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| keyword | string | 是 | 关键词（大小写不敏感，模糊匹配） |
+| type | string | 否 | 实体类型过滤，可选：PLAYER/TEAM/MATCH/TOURNAMENT |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "elementId": "4:player-uuid:1",
+      "id": "550e8400-...",
+      "name": "朱婷",
+      "type": "PLAYER",
+      "description": "...",
+      "properties": { "position": "主攻", ... }
+    }
+  ]
+}
+```
+
+**说明**：最多返回 50 条匹配结果
+
+---
+
+### 获取实体详情
+
+```
+GET /api/knowledge/entity/{id}
+```
+
+**路径参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | string | 实体业务 ID（UUID） |
+
+**返回数据**：KnowledgeNode 对象。不存在时 code=404
+
+---
+
+### 创建实体
+
+```
+POST /api/knowledge/entity
+```
+
+**权限**：需要登录
+
+**请求数据**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | string | 是 | 实体名称 |
+| type | string | 是 | 实体类型：PLAYER/TEAM/MATCH/TOURNAMENT |
+| description | string | 否 | 描述 |
+| properties | object | 否 | 类型特有属性，如 {position: "主攻", height: "198cm"} |
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "实体创建成功",
+  "data": { "elementId": "4:...", "id": "uuid-...", "name": "新球员", "type": "PLAYER", ... }
+}
+```
+
+---
+
+### 更新实体
+
+```
+PUT /api/knowledge/entity/{id}
+```
+
+**权限**：需要登录
+
+**路径参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | string | 实体业务 ID |
+
+**请求数据**：同创建实体，所有字段可选（只更新传入的字段）
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "实体更新成功",
+  "data": { ... }
+}
+```
+
+---
+
+### 删除实体
+
+```
+DELETE /api/knowledge/entity/{id}
+```
+
+**权限**：需要登录
+
+**路径参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | string | 实体业务 ID |
+
+**说明**：会级联删除该实体的所有关系
+
+---
+
+### 创建关系
+
+```
+POST /api/knowledge/relation
+```
+
+**权限**：需要登录
+
+**请求数据**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| fromId | string | 是 | 源实体业务 ID（UUID） |
+| toId | string | 是 | 目标实体业务 ID（UUID） |
+| relationType | string | 是 | 关系类型：PLAYS_FOR/PARTICIPATES_IN/BELONGS_TO/COACHES/TEAMMATE_OF |
+| properties | object | 否 | 关系属性，如 {number: "2", since: "2020"} |
+
+**说明**：同一对实体之间若已存在同名关系，不会重复创建（MERGE 语义）
+
+---
+
+### 删除关系
+
+```
+DELETE /api/knowledge/relation/{fromId}/{toId}/{type}
+```
+
+**权限**：需要登录
+
+**路径参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| fromId | string | 源实体业务 ID |
+| toId | string | 目标实体业务 ID |
+| type | string | 关系类型 |
+
+---
+
+### 按类型浏览实体
+
+```
+GET /api/knowledge/type/{type}
+```
+
+**路径参数**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| type | string | 实体类型：PLAYER/TEAM/MATCH/TOURNAMENT |
+
+**说明**：最多返回 100 条，按名称排序
+
+---
+
+### 获取实体类型列表
+
+```
+GET /api/knowledge/types
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    { "name": "PLAYER", "label": "球员" },
+    { "name": "TEAM", "label": "球队" },
+    { "name": "MATCH", "label": "比赛" },
+    { "name": "TOURNAMENT", "label": "赛事" }
+  ]
+}
+```
+
+---
+
+### 获取关系类型列表
+
+```
+GET /api/knowledge/relation-types
+```
+
+**返回数据**：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    { "name": "PLAYS_FOR", "label": "效力于" },
+    { "name": "PARTICIPATES_IN", "label": "参加" },
+    { "name": "BELONGS_TO", "label": "属于" },
+    { "name": "COACHES", "label": "执教" },
+    { "name": "TEAMMATE_OF", "label": "队友" }
+  ]
+}
+```

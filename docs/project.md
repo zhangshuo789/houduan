@@ -737,103 +737,94 @@ PENDING(待处理) → REJECTED(已驳回)：举报不实，驳回举报
 
 ---
 
-## 知识图谱功能规划
+## 阶段六：知识图谱功能 ✅ 已完成
 
-### 概念设计
+### 技术选型
 
-知识图谱将构建排球领域的结构化知识网络，包括：
-- **实体**：球员、球队、赛事、场地、装备、技术动作
-- **关系**：球员-效力-球队、球队-参加-赛事、球员-使用-装备
-- **属性**：球员身高、体重、位置；球队战绩、排名
+使用 **Neo4j 图数据库** 存储排球领域知识实体与关系，通过 `neo4j-java-driver` 5.28.2 直接操作 Cypher 查询，避免 Spring Boot 4.0.5 与 Spring Data Neo4j 的版本兼容问题。
 
 ### 数据模型
 
-#### 实体类型 (Entity Type)
-| 类型 | 说明 | 示例 |
-|------|------|------|
-| PLAYER | 球员 | 朱婷、袁心玥 |
-| TEAM | 球队 | 中国女排 |
-| EVENT | 赛事 | 世界杯、世锦赛 |
-| VENUE | 场地 | 北京体育馆 |
-| EQUIPMENT | 装备 | 排球、排球鞋 |
-| TECHNIQUE | 技术 | 扣球、拦网、传球 |
+Neo4j 节点和关系的属性直接以 Property 形式存储，不使用独立的 MySQL 表。
 
-#### 关系类型 (Relation Type)
-| 关系 | 说明 | 示例 |
-|------|------|------|
-| PLAYS_FOR | 效力于 | 朱婷-效力于-中国女排 |
-| PARTICIPATES_IN | 参加 | 中国女排-参加-世界杯 |
-| LOCATED_AT | 位于 | 北京体育馆-位于-北京 |
-| USES | 使用 | 朱婷-使用-Nike排球鞋 |
-| WINS | 获胜 | 中国女排-获胜-奥运会 |
-| TEACHES | 执教 | 郎平-执教-中国女排 |
+#### 实体类型（Node Label）
 
-#### 实体表 (knowledge_entity)
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | BIGINT | 主键 |
-| name | VARCHAR(100) | 实体名称 |
-| type | VARCHAR(20) | 实体类型 |
-| description | TEXT | 描述 |
-| properties | JSON | 属性JSON |
-| created_by | BIGINT | 创建者ID |
-| created_at | DATETIME | 创建时间 |
-| updated_at | DATETIME | 更新时间 |
+| 类型 | 说明 | 示例 | 特有属性 |
+|------|------|------|----------|
+| PLAYER | 球员 | 朱婷、袁心玥 | position, height, nationality, birthDate |
+| TEAM | 球队 | 中国女排 | country, teamType |
+| MATCH | 比赛 | 奥运会决赛 | matchDate, location, result |
+| TOURNAMENT | 赛事 | 2024巴黎奥运会 | year, tournamentType |
 
-#### 关系表 (knowledge_relation)
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | BIGINT | 主键 |
-| from_entity_id | BIGINT | 起始实体ID |
-| relation_type | VARCHAR(50) | 关系类型 |
-| to_entity_id | BIGINT | 目标实体ID |
-| weight | FLOAT | 权重/置信度 |
-| created_at | DATETIME | 创建时间 |
+节点通用属性：id (UUID)、name、type、description、createdAt、createdBy
 
-#### 实体图片表 (entity_image)
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | BIGINT | 主键 |
-| entity_id | BIGINT | 实体ID |
-| image_url | VARCHAR(500) | 图片URL |
-| caption | VARCHAR(255) | 图片说明 |
+#### 关系类型（Relationship Type）
 
-### API 接口规划
+| 关系 | 方向 | 含义 | 示例 |
+|------|------|------|------|
+| PLAYS_FOR | Player → Team | 效力于 | 朱婷 → 中国女排 |
+| PARTICIPATES_IN | Team → Match | 参加比赛 | 中国女排 → 奥运会决赛 |
+| BELONGS_TO | Match → Tournament | 比赛属于赛事 | 奥运会决赛 → 2024巴黎奥运会 |
+| COACHES | Player → Team | 执教 | 郎平 → 中国女排 |
+| TEAMMATE_OF | Player ↔ Player | 曾是队友 | 朱婷 ↔ 袁心玥 |
+
+### API 接口
 
 ```
-# 知识图谱接口 /api/knowledge/*
+# 图谱查询（公开）
+GET    /api/knowledge/graph/player?name=朱婷     # 球员图谱（自动展开至球队→比赛→赛事）
+GET    /api/knowledge/graph/team?name=中国女排     # 球队图谱
+GET    /api/knowledge/path?from=朱婷&to=巴西女排  # 两实体最短路径（最多5跳）
+GET    /api/knowledge/entity/search?keyword=朱    # 模糊搜索实体
+GET    /api/knowledge/entity/{id}                 # 实体详情
+GET    /api/knowledge/type/{PLAYER}               # 按类型浏览实体
+GET    /api/knowledge/types                       # 所有实体类型
+GET    /api/knowledge/relation-types              # 所有关系类型
 
-## 实体管理
-GET    /api/knowledge/entity/{id}     # 获取实体详情
-GET    /api/knowledge/entity/search  # 搜索实体
-POST   /api/knowledge/entity          # 创建实体(需登录)
-PUT    /api/knowledge/entity/{id}      # 更新实体(需登录)
+# 实体管理（需登录）
+POST   /api/knowledge/entity                      # 创建实体
+PUT    /api/knowledge/entity/{id}                 # 更新实体
+DELETE /api/knowledge/entity/{id}                 # 删除实体（级联删除关系）
 
-## 关系管理
-GET    /api/knowledge/relation/{id}   # 获取关系详情
-POST   /api/knowledge/relation         # 创建关系(需登录)
-DELETE /api/knowledge/relation/{id}   # 删除关系(需登录)
-
-## 图谱查询
-GET    /api/knowledge/graph           # 获取实体图谱(某实体及其关联)
-GET    /api/knowledge/graph/player/{id}   # 获取球员图谱
-GET    /api/knowledge/graph/team/{id}     # 获取球队图谱
-GET    /api/knowledge/path?from={id}&to={id} # 查询两实体间路径
-
-## 知识浏览
-GET    /api/knowledge/types           # 获取所有实体类型
-GET    /api/knowledge/type/{type}     # 按类型浏览实体
-GET    /api/knowledge/featured        # 精选推荐
+# 关系管理（需登录）
+POST   /api/knowledge/relation                    # 创建关系
+DELETE /api/knowledge/relation/{fromId}/{toId}/{type}  # 删除关系
 ```
 
-### 技术实现
+### 图谱返回格式
 
+前端可使用 ECharts / D3.js / vis.js 等图表库渲染：
+
+```json
+{
+  "nodes": [
+    { "elementId": "4:xxx:1", "id": "uuid-1", "name": "朱婷", "type": "PLAYER",
+      "description": "...", "properties": {"position": "主攻", "height": "198cm"} }
+  ],
+  "edges": [
+    { "from": "4:xxx:1", "to": "4:xxx:2", "label": "PLAYS_FOR" }
+  ]
+}
 ```
-1. 实体抽取：从帖子/评论中自动抽取排球相关实体(球员名、球队名等)
-2. 关系推理：基于用户行为推断实体关系(同队球员、共参加赛事等)
-3. 图数据库：可选用 Neo4j 存储图数据，或使用 MySQL + 邻接表
-4. 搜索优化：ElasticSearch 索引实体名称和描述
-5. 前端展示：图谱可视化(节点-边网络图)
+
+### 示例数据
+
+首次启动应用时自动初始化：
+
+| 类型 | 数量 | 内容 |
+|------|------|------|
+| 球员 | 5 | 朱婷、袁心玥、张常宁、龚翔宇、郎平 |
+| 球队 | 4 | 中国女排、巴西女排、美国女排、天津渤海银行女排 |
+| 比赛 | 3 | 奥运会决赛、世界杯中巴战、世锦赛中美战 |
+| 赛事 | 3 | 2024巴黎奥运会、2022世锦赛、2019世界杯 |
+
+### 配置文件
+
+```properties
+# Neo4j 配置（application.properties）
+neo4j.uri=${NEO4J_URI:neo4j+s://xxx.databases.neo4j.io}
+neo4j.username=${NEO4J_USERNAME:xxx}
+neo4j.password=${NEO4J_PASSWORD:xxx}
 ```
 
 ---
@@ -841,17 +832,16 @@ GET    /api/knowledge/featured        # 精选推荐
 ## 未来功能展望
 
 ### 短期规划
-- 管理员后台开发
-- 内容举报/审核系统
-- 数据统计面板
+- 管理员后台开发 ✅
+- 内容举报/审核系统 ✅
+- 数据统计面板 ✅
 
 ### 中期规划
-- 知识图谱基础功能
 - 智能推荐(推荐赛事/用户/内容)
 - 全文搜索优化
+- AI辅助问答(排球知识问答)
 
 ### 长期愿景
-- AI辅助问答(排球知识问答)
 - 赛事预测/分析
 - 虚拟比赛解说
 - 排球教学视频库
