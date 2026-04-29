@@ -37,7 +37,7 @@ public class KnowledgeDataInitializer implements CommandLineRunner {
         }
         try {
             // 检查是否已有数据
-            var count = countEntities();
+            var count = knowledgeService.countEntities();
             if (count > 0) {
                 log.info("知识图谱已有 {} 个实体，跳过初始化", count);
                 initialized = true;
@@ -47,18 +47,10 @@ public class KnowledgeDataInitializer implements CommandLineRunner {
             log.info("开始初始化排球知识图谱示例数据...");
             initData();
             initialized = true;
-            log.info("排球知识图谱示例数据初始化完成");
+            log.info("排球知识图谱示例数据初始化完成，共 {} 个实体、{} 条关系",
+                    knowledgeService.countEntities(), knowledgeService.countRelations());
         } catch (Exception e) {
-            log.error("知识图谱数据初始化失败: {}", e.getMessage());
-        }
-    }
-
-    private long countEntities() {
-        try (var session = neo4jDriver.session()) {
-            var result = session.run("MATCH (n) RETURN count(n) AS cnt");
-            return result.single().get("cnt").asLong();
-        } catch (Exception e) {
-            return 0;
+            log.error("知识图谱数据初始化失败: {}", e.getMessage(), e);
         }
     }
 
@@ -191,15 +183,7 @@ public class KnowledgeDataInitializer implements CommandLineRunner {
         knowledgeService.createRelation(match3.getId(), worldChampionship.getId(), RelationType.BELONGS_TO, null);
 
         log.info("已创建 {} 个实体和 {} 条关系",
-                countEntities(), countRelations());
+                knowledgeService.countEntities(), knowledgeService.countRelations());
     }
 
-    private long countRelations() {
-        try (var session = neo4jDriver.session()) {
-            var result = session.run("MATCH ()-[r]->() RETURN count(r) AS cnt");
-            return result.single().get("cnt").asLong();
-        } catch (Exception e) {
-            return 0;
-        }
-    }
 }

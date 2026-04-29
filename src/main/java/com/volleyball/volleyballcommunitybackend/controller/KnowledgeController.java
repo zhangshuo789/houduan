@@ -185,4 +185,13 @@ public class KnowledgeController {
         }
         return ResponseEntity.ok(ApiResponse.success(types));
     }
+
+    /**
+     * Neo4j 连接诊断
+     */
+    @GetMapping("/health")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> health() {
+        Map<String, Object> info = knowledgeService.getHealthInfo();
+        return ResponseEntity.ok(ApiResponse.success(info));
+    }
 }

@@ -466,6 +466,44 @@ public class KnowledgeService {
         return nodes;
     }
 
+    // ==================== 诊断 ====================
+
+    /**
+     * 获取 Neo4j 连接健康信息和实体统计
+     */
+    public Map<String, Object> getHealthInfo() {
+        Map<String, Object> info = new HashMap<>();
+        try (var session = neo4jDriver.session()) {
+            session.run("RETURN 1").consume();
+            info.put("connected", true);
+            info.put("uri", "已连接"); // Driver 内部持有
+        } catch (Exception e) {
+            info.put("connected", false);
+            info.put("error", e.getMessage());
+        }
+        info.put("entityCount", countEntities());
+        info.put("relationCount", countRelations());
+        return info;
+    }
+
+    public long countEntities() {
+        try (var session = neo4jDriver.session()) {
+            var result = session.run("MATCH (n) RETURN count(n) AS cnt");
+            return result.single().get("cnt").asLong();
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    public long countRelations() {
+        try (var session = neo4jDriver.session()) {
+            var result = session.run("MATCH ()-[r]->() RETURN count(r) AS cnt");
+            return result.single().get("cnt").asLong();
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
     // ==================== 工具方法 ====================
 
     private KnowledgeNode mapToNode(Node neo4jNode, String elementId) {
