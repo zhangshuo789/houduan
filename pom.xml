@@ -49,6 +49,13 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Neo4j Java Driver -->
+		<dependency>
+			<groupId>org.neo4j.driver</groupId>
+			<artifactId>neo4j-java-driver</artifactId>
+			<version>5.28.2</version>
+		</dependency>
+
 		<!-- JWT -->
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
