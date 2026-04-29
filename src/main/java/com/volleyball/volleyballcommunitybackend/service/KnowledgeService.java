@@ -10,11 +10,16 @@ import org.neo4j.driver.Value;
 import org.neo4j.driver.types.Node;
 import org.springframework.stereotype.Service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
 public class KnowledgeService {
+
+    private static final Logger log = LoggerFactory.getLogger(KnowledgeService.class);
 
     private final Driver neo4jDriver;
 
@@ -156,101 +161,40 @@ public class KnowledgeService {
     // ==================== 图谱查询 ====================
 
     /**
-     * 获取球员知识图谱（球员 → 球队 → 比赛 → 赛事，最多 3 层）
+     * 根据实体 ID（UUID）获取图谱，自动展开关联节点（2 层）
      */
-    public KnowledgeGraph getPlayerGraph(String name) {
+    public KnowledgeGraph getEntityGraph(String entityId) {
         Set<KnowledgeNode> nodeSet = new LinkedHashSet<>();
         Set<KnowledgeGraph.KnowledgeEdge> edgeSet = new LinkedHashSet<>();
 
         try (var session = neo4jDriver.session()) {
-            // 1. 查找球员
-            var playerResult = session.run(
-                "MATCH (p:Player {name: $name}) RETURN p, elementId(p) as eid",
-                Map.of("name", name)
+            // 1. 查找目标实体
+            var entityResult = session.run(
+                "MATCH (n {id: $id}) RETURN n, elementId(n) as eid, labels(n) as labels",
+                Map.of("id", entityId)
             );
-            if (!playerResult.hasNext()) {
+            if (!entityResult.hasNext()) {
+                log.warn("getEntityGraph: 未找到实体 id={}", entityId);
                 return KnowledgeGraph.builder()
                     .nodes(Collections.emptyList())
                     .edges(Collections.emptyList())
                     .build();
             }
-            var playerRecord = playerResult.single();
-            var playerNode = mapToNode(playerRecord.get("p").asNode(), playerRecord.get("eid").asString());
-            nodeSet.add(playerNode);
+            var entityRecord = entityResult.single();
+            var entityNode = mapToNode(entityRecord.get("n").asNode(), entityRecord.get("eid").asString());
+            nodeSet.add(entityNode);
 
-            // 2. 查询关联的球队及关系
-            var teamResult = session.run("""
-                MATCH (p:Player {name: $name})-[r:PLAYS_FOR]->(t:Team)
-                RETURN t, r, elementId(t) as tid,
-                       elementId(p) as pid, type(r) as rtype
-                """, Map.of("name", name));
-            while (teamResult.hasNext()) {
-                var rec = teamResult.next();
-                var teamNode = mapToNode(rec.get("t").asNode(), rec.get("tid").asString());
-                if (nodeSet.add(teamNode)) {
-                    edgeSet.add(KnowledgeGraph.KnowledgeEdge.builder()
-                        .from(rec.get("pid").asString())
-                        .to(rec.get("tid").asString())
-                        .label(rec.get("rtype").asString())
-                        .build());
-                }
-            }
-
-            // 3. 查询球队参加的比赛
-            for (var node : new ArrayList<>(nodeSet)) {
-                if ("TEAM".equals(node.getType())) {
-                    var matchResult = session.run("""
-                        MATCH (t:Team {id: $teamId})-[r:PARTICIPATES_IN]->(m:Match)
-                        RETURN m, r, elementId(m) as mid,
-                               elementId(t) as tid, type(r) as rtype
-                        """, Map.of("teamId", node.getId()));
-                    while (matchResult.hasNext()) {
-                        var rec = matchResult.next();
-                        var matchNode = mapToNode(rec.get("m").asNode(), rec.get("mid").asString());
-                        if (nodeSet.add(matchNode)) {
-                            edgeSet.add(KnowledgeGraph.KnowledgeEdge.builder()
-                                .from(rec.get("tid").asString())
-                                .to(rec.get("mid").asString())
-                                .label(rec.get("rtype").asString())
-                                .build());
-                        }
-                    }
-                }
-            }
-
-            // 4. 查询比赛所属赛事
-            for (var node : new ArrayList<>(nodeSet)) {
-                if ("MATCH".equals(node.getType())) {
-                    var tournamentResult = session.run("""
-                        MATCH (m:Match {id: $matchId})-[r:BELONGS_TO]->(t:Tournament)
-                        RETURN t, r, elementId(t) as tid,
-                               elementId(m) as mid, type(r) as rtype
-                        """, Map.of("matchId", node.getId()));
-                    while (tournamentResult.hasNext()) {
-                        var rec = tournamentResult.next();
-                        var tournamentNode = mapToNode(rec.get("t").asNode(), rec.get("tid").asString());
-                        if (nodeSet.add(tournamentNode)) {
-                            edgeSet.add(KnowledgeGraph.KnowledgeEdge.builder()
-                                .from(rec.get("mid").asString())
-                                .to(rec.get("tid").asString())
-                                .label(rec.get("rtype").asString())
-                                .build());
-                        }
-                    }
-                }
-            }
-
-            // 5. 查询同队队友
-            var teammateResult = session.run("""
-                MATCH (p:Player {name: $name})-[r:TEAMMATE_OF]-(mate:Player)
-                RETURN mate, r, elementId(mate) as eid,
-                       elementId(p) as pid, elementId(r) as rid,
-                       startNode(r) as sn, endNode(r) as en, type(r) as rtype
-                """, Map.of("name", name));
-            while (teammateResult.hasNext()) {
-                var rec = teammateResult.next();
-                var mateNode = mapToNode(rec.get("mate").asNode(), rec.get("eid").asString());
-                if (nodeSet.add(mateNode)) {
+            // 2. 查询所有直接关联节点（1 层展开）
+            var directResult = session.run("""
+                MATCH (n {id: $id})-[r]-(neighbor)
+                RETURN neighbor, r, type(r) as rtype,
+                       elementId(neighbor) as neighborEid,
+                       startNode(r) as sn, endNode(r) as en
+                """, Map.of("id", entityId));
+            while (directResult.hasNext()) {
+                var rec = directResult.next();
+                var neighborNode = mapToNode(rec.get("neighbor").asNode(), rec.get("neighborEid").asString());
+                if (nodeSet.add(neighborNode)) {
                     edgeSet.add(KnowledgeGraph.KnowledgeEdge.builder()
                         .from(rec.get("sn").asNode().elementId())
                         .to(rec.get("en").asNode().elementId())
@@ -259,21 +203,24 @@ public class KnowledgeService {
                 }
             }
 
-            // 6. 查询教练关系
-            var coachResult = session.run("""
-                MATCH (p:Player {name: $name})-[r:COACHES]->(t:Team)
-                RETURN t, r, elementId(t) as tid,
-                       elementId(p) as pid, type(r) as rtype
-                """, Map.of("name", name));
-            while (coachResult.hasNext()) {
-                var rec = coachResult.next();
-                var teamNode = mapToNode(rec.get("t").asNode(), rec.get("tid").asString());
-                if (nodeSet.add(teamNode)) {
-                    edgeSet.add(KnowledgeGraph.KnowledgeEdge.builder()
-                        .from(rec.get("pid").asString())
-                        .to(rec.get("tid").asString())
-                        .label(rec.get("rtype").asString())
-                        .build());
+            // 3. 查询第二层关联节点（通过展开后的节点进一步关联）
+            for (var node : new ArrayList<>(nodeSet)) {
+                var indirectResult = session.run("""
+                    MATCH (n {id: $nodeId})-[r]-(neighbor)
+                    RETURN neighbor, r, type(r) as rtype,
+                           elementId(neighbor) as neighborEid,
+                           startNode(r) as sn, endNode(r) as en
+                    """, Map.of("nodeId", node.getId()));
+                while (indirectResult.hasNext()) {
+                    var rec = indirectResult.next();
+                    var neighborNode = mapToNode(rec.get("neighbor").asNode(), rec.get("neighborEid").asString());
+                    if (nodeSet.add(neighborNode)) {
+                        edgeSet.add(KnowledgeGraph.KnowledgeEdge.builder()
+                            .from(rec.get("sn").asNode().elementId())
+                            .to(rec.get("en").asNode().elementId())
+                            .label(rec.get("rtype").asString())
+                            .build());
+                    }
                 }
             }
         }
@@ -285,106 +232,45 @@ public class KnowledgeService {
     }
 
     /**
+     * 获取球员知识图谱
+     */
+    public KnowledgeGraph getPlayerGraph(String name) {
+        // 先搜后查
+        var entities = searchEntities(name, "PLAYER");
+        if (entities.isEmpty()) {
+            return KnowledgeGraph.builder()
+                .nodes(Collections.emptyList())
+                .edges(Collections.emptyList())
+                .build();
+        }
+        // 精确匹配
+        for (var e : entities) {
+            if (name.equals(e.getName())) {
+                return getEntityGraph(e.getId());
+            }
+        }
+        // 没精确匹配就用第一个
+        return getEntityGraph(entities.get(0).getId());
+    }
+
+    /**
      * 获取球队知识图谱
      */
     public KnowledgeGraph getTeamGraph(String name) {
-        Set<KnowledgeNode> nodeSet = new LinkedHashSet<>();
-        Set<KnowledgeGraph.KnowledgeEdge> edgeSet = new LinkedHashSet<>();
-
-        try (var session = neo4jDriver.session()) {
-            // 1. 球队
-            var teamResult = session.run(
-                "MATCH (t:Team {name: $name}) RETURN t, elementId(t) as eid",
-                Map.of("name", name)
-            );
-            if (!teamResult.hasNext()) {
-                return KnowledgeGraph.builder()
-                    .nodes(Collections.emptyList()).edges(Collections.emptyList()).build();
-            }
-            var rec = teamResult.single();
-            nodeSet.add(mapToNode(rec.get("t").asNode(), rec.get("eid").asString()));
-
-            // 2. 球员
-            var playerResult = session.run("""
-                MATCH (p:Player)-[r:PLAYS_FOR]->(t:Team {name: $name})
-                RETURN p, r, elementId(p) as pid,
-                       elementId(t) as tid, type(r) as rtype
-                """, Map.of("name", name));
-            while (playerResult.hasNext()) {
-                var pr = playerResult.next();
-                if (nodeSet.add(mapToNode(pr.get("p").asNode(), pr.get("pid").asString()))) {
-                    edgeSet.add(KnowledgeGraph.KnowledgeEdge.builder()
-                        .from(pr.get("pid").asString())
-                        .to(pr.get("tid").asString())
-                        .label(pr.get("rtype").asString())
-                        .build());
-                }
-            }
-
-            // 3. 教练
-            var coachResult = session.run("""
-                MATCH (p:Player)-[r:COACHES]->(t:Team {name: $name})
-                RETURN p, r, elementId(p) as pid,
-                       elementId(t) as tid, type(r) as rtype
-                """, Map.of("name", name));
-            while (coachResult.hasNext()) {
-                var cr = coachResult.next();
-                if (nodeSet.add(mapToNode(cr.get("p").asNode(), cr.get("pid").asString()))) {
-                    edgeSet.add(KnowledgeGraph.KnowledgeEdge.builder()
-                        .from(cr.get("pid").asString())
-                        .to(cr.get("tid").asString())
-                        .label(cr.get("rtype").asString())
-                        .build());
-                }
-            }
-
-            // 4. 比赛
-            for (var node : new ArrayList<>(nodeSet)) {
-                if ("TEAM".equals(node.getType())) {
-                    var matchResult = session.run("""
-                        MATCH (t:Team {id: $teamId})-[r:PARTICIPATES_IN]->(m:Match)
-                        RETURN m, r, elementId(m) as mid,
-                               elementId(t) as tid, type(r) as rtype
-                        """, Map.of("teamId", node.getId()));
-                    while (matchResult.hasNext()) {
-                        var mr = matchResult.next();
-                        if (nodeSet.add(mapToNode(mr.get("m").asNode(), mr.get("mid").asString()))) {
-                            edgeSet.add(KnowledgeGraph.KnowledgeEdge.builder()
-                                .from(mr.get("tid").asString())
-                                .to(mr.get("mid").asString())
-                                .label(mr.get("rtype").asString())
-                                .build());
-                        }
-                    }
-                }
-            }
-
-            // 5. 赛事
-            for (var node : new ArrayList<>(nodeSet)) {
-                if ("MATCH".equals(node.getType())) {
-                    var tournamentResult = session.run("""
-                        MATCH (m:Match {id: $matchId})-[r:BELONGS_TO]->(t:Tournament)
-                        RETURN t, r, elementId(t) as tid,
-                               elementId(m) as mid, type(r) as rtype
-                        """, Map.of("matchId", node.getId()));
-                    while (tournamentResult.hasNext()) {
-                        var tr = tournamentResult.next();
-                        if (nodeSet.add(mapToNode(tr.get("t").asNode(), tr.get("tid").asString()))) {
-                            edgeSet.add(KnowledgeGraph.KnowledgeEdge.builder()
-                                .from(tr.get("mid").asString())
-                                .to(tr.get("tid").asString())
-                                .label(tr.get("rtype").asString())
-                                .build());
-                        }
-                    }
-                }
+        // 先搜后查
+        var entities = searchEntities(name, "TEAM");
+        if (entities.isEmpty()) {
+            return KnowledgeGraph.builder()
+                .nodes(Collections.emptyList())
+                .edges(Collections.emptyList())
+                .build();
+        }
+        for (var e : entities) {
+            if (name.equals(e.getName())) {
+                return getEntityGraph(e.getId());
             }
         }
-
-        return KnowledgeGraph.builder()
-            .nodes(new ArrayList<>(nodeSet))
-            .edges(new ArrayList<>(edgeSet))
-            .build();
+        return getEntityGraph(entities.get(0).getId());
     }
 
     /**

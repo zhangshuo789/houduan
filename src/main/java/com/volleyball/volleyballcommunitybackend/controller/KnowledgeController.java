@@ -118,6 +118,16 @@ public class KnowledgeController {
     // ==================== 图谱查询 ====================
 
     /**
+     * 根据实体 ID（UUID）获取图谱
+     * 示例: GET /api/knowledge/graph/entity?id=550e8400-...
+     */
+    @GetMapping("/graph/entity")
+    public ResponseEntity<ApiResponse<KnowledgeGraph>> getEntityGraph(@RequestParam String id) {
+        KnowledgeGraph graph = knowledgeService.getEntityGraph(id);
+        return ResponseEntity.ok(ApiResponse.success(graph));
+    }
+
+    /**
      * 获取球员知识图谱
      * 示例: GET /api/knowledge/graph/player?name=朱婷
      */
