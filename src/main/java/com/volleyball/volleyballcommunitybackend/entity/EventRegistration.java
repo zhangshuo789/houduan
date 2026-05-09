@@ -20,7 +20,7 @@ public class EventRegistration {
     @Column(name = "event_id", nullable = false)
     private Long eventId;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id")
     private Long userId;
 
     @Column(name = "team_name", nullable = false)

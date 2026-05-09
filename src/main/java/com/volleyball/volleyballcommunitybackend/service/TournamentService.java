@@ -410,7 +410,7 @@ public class TournamentService {
 
         EventRegistration registration = new EventRegistration();
         registration.setEventId(eventId);
-        registration.setUserId(operatorId);
+        registration.setUserId(null); // 手动添加的队伍无关联用户
         registration.setTeamName(request.getTeamName());
         registration.setBracketPosition(position);
         registration.setEliminated(false);

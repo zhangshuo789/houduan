@@ -50,13 +50,12 @@ CREATE TABLE `event` (
 CREATE TABLE `event_registration` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '报名ID',
     `event_id` BIGINT NOT NULL COMMENT '赛事ID',
-    `user_id` BIGINT NOT NULL COMMENT '报名用户ID',
+    `user_id` BIGINT DEFAULT NULL COMMENT '报名用户ID（手动添加的队伍为NULL）',
     `team_name` VARCHAR(100) NOT NULL COMMENT '队伍名称',
     `bracket_position` INT DEFAULT NULL COMMENT 'bracket中的位置(0-based)',
     `eliminated` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否已淘汰',
     `is_champion` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否冠军',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '报名时间',
-    UNIQUE KEY `uk_event_user` (`event_id`, `user_id`),
     INDEX `idx_reg_event` (`event_id`),
     INDEX `idx_reg_position` (`event_id`, `bracket_position`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛事报名表';
