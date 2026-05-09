@@ -23,26 +23,17 @@ public class EventRegistration {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "team_name")
+    @Column(name = "team_name", nullable = false)
     private String teamName;
 
-    @Column(name = "contact_person")
-    private String contactPerson;
+    @Column(name = "bracket_position")
+    private Integer bracketPosition;
 
-    @Column(name = "contact_phone")
-    private String contactPhone;
+    @Column(name = "eliminated", nullable = false)
+    private Boolean eliminated = false;
 
-    @Column(name = "team_size")
-    private Integer teamSize;
-
-    @Column(name = "status", nullable = false)
-    private String status = "PENDING";
-
-    @Column(name = "reviewed_by")
-    private Long reviewedBy;
-
-    @Column(name = "reviewed_at")
-    private LocalDateTime reviewedAt;
+    @Column(name = "is_champion", nullable = false)
+    private Boolean isChampion = false;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

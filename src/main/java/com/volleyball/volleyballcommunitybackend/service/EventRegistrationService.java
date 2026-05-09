@@ -2,79 +2,78 @@ package com.volleyball.volleyballcommunitybackend.service;
 
 import com.volleyball.volleyballcommunitybackend.dto.request.EventRegistrationRequest;
 import com.volleyball.volleyballcommunitybackend.dto.response.EventRegistrationResponse;
+import com.volleyball.volleyballcommunitybackend.entity.Event;
 import com.volleyball.volleyballcommunitybackend.entity.EventRegistration;
 import com.volleyball.volleyballcommunitybackend.repository.EventRegistrationRepository;
+import com.volleyball.volleyballcommunitybackend.repository.EventRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-
 @Service
 public class EventRegistrationService {
 
-    private final EventRegistrationRepository eventRegistrationRepository;
+    private final EventRegistrationRepository registrationRepository;
+    private final EventRepository eventRepository;
+    private final TournamentService tournamentService;
 
-    public EventRegistrationService(EventRegistrationRepository eventRegistrationRepository) {
-        this.eventRegistrationRepository = eventRegistrationRepository;
+    public EventRegistrationService(EventRegistrationRepository registrationRepository,
+                                    EventRepository eventRepository,
+                                    TournamentService tournamentService) {
+        this.registrationRepository = registrationRepository;
+        this.eventRepository = eventRepository;
+        this.tournamentService = tournamentService;
     }
 
     @Transactional
     public EventRegistrationResponse register(Long eventId, Long userId, EventRegistrationRequest request) {
-        if (eventRegistrationRepository.existsByEventIdAndUserId(eventId, userId)) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("赛事不存在"));
+
+        if (!"REGISTERING".equals(event.getStatus())) {
+            throw new RuntimeException("赛事当前不在报名阶段");
+        }
+
+        if (registrationRepository.existsByEventIdAndUserId(eventId, userId)) {
             throw new RuntimeException("已报名该赛事");
         }
+
+        long currentCount = registrationRepository.countByEventId(eventId);
+        if (currentCount >= event.getBracketSize()) {
+            throw new RuntimeException("报名已满");
+        }
+
+        // 分配 bracket 位置
+        int position = tournamentService.assignBracketPosition(eventId, event.getBracketSize());
 
         EventRegistration registration = new EventRegistration();
         registration.setEventId(eventId);
         registration.setUserId(userId);
         registration.setTeamName(request.getTeamName());
-        registration.setContactPerson(request.getContactPerson());
-        registration.setContactPhone(request.getContactPhone());
-        registration.setTeamSize(request.getTeamSize());
-        registration.setStatus("PENDING");
+        registration.setBracketPosition(position);
+        registration.setEliminated(false);
+        registration.setIsChampion(false);
 
-        EventRegistration saved = eventRegistrationRepository.save(registration);
-        return toEventRegistrationResponse(saved);
+        EventRegistration saved = registrationRepository.save(registration);
+        return toResponse(saved);
     }
 
     public Page<EventRegistrationResponse> getRegistrations(Long eventId, Pageable pageable) {
-        return eventRegistrationRepository.findByEventId(eventId, pageable)
-                .map(this::toEventRegistrationResponse);
+        return registrationRepository.findByEventId(eventId, pageable)
+                .map(this::toResponse);
     }
 
-    @Transactional
-    public EventRegistrationResponse approveRegistration(Long registrationId, Long reviewerId, boolean approved) {
-        EventRegistration registration = eventRegistrationRepository.findById(registrationId)
-                .orElseThrow(() -> new RuntimeException("报名记录不存在"));
-
-        registration.setReviewedBy(reviewerId);
-        registration.setReviewedAt(LocalDateTime.now());
-        registration.setStatus(approved ? "APPROVED" : "REJECTED");
-
-        EventRegistration saved = eventRegistrationRepository.save(registration);
-        return toEventRegistrationResponse(saved);
-    }
-
-    private EventRegistrationResponse toEventRegistrationResponse(EventRegistration registration) {
+    private EventRegistrationResponse toResponse(EventRegistration r) {
         return new EventRegistrationResponse(
-                registration.getId(),
-                registration.getEventId(),
-                registration.getTeamName(),
-                registration.getContactPerson(),
-                maskPhone(registration.getContactPhone()),
-                registration.getTeamSize(),
-                registration.getStatus(),
-                registration.getReviewedAt(),
-                registration.getCreatedAt()
+                r.getId(),
+                r.getEventId(),
+                r.getUserId(),
+                r.getTeamName(),
+                r.getBracketPosition(),
+                r.getEliminated(),
+                r.getIsChampion(),
+                r.getCreatedAt()
         );
-    }
-
-    private String maskPhone(String phone) {
-        if (phone == null || phone.length() < 11) {
-            return phone;
-        }
-        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
     }
 }

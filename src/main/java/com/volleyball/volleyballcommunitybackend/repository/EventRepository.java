@@ -12,7 +12,5 @@ import java.util.List;
 @Repository
 public interface EventRepository extends JpaRepository<Event, Long> {
     Page<Event> findAllByOrderByStartTimeAsc(Pageable pageable);
-    List<Event> findByStatusAndRegistrationDeadlineBefore(String status, LocalDateTime deadline);
     List<Event> findByStatusAndStartTimeBefore(String status, LocalDateTime startTime);
-    List<Event> findByStatusAndEndTimeBefore(String status, LocalDateTime endTime);
 }

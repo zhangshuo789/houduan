@@ -5,7 +5,6 @@ import com.volleyball.volleyballcommunitybackend.dto.request.HandleReportRequest
 import com.volleyball.volleyballcommunitybackend.dto.request.ReportRequest;
 import com.volleyball.volleyballcommunitybackend.dto.request.SetRoleRequest;
 import com.volleyball.volleyballcommunitybackend.dto.request.SetUserStatusRequest;
-import com.volleyball.volleyballcommunitybackend.dto.request.UpdateEventStatusRequest;
 import com.volleyball.volleyballcommunitybackend.dto.response.ApiResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.ContentStatsResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.GroupListResponse;
@@ -14,9 +13,6 @@ import com.volleyball.volleyballcommunitybackend.dto.response.ReportResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.StatsOverviewResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.UserManagementResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.UserStatsResponse;
-import com.volleyball.volleyballcommunitybackend.entity.Event;
-import com.volleyball.volleyballcommunitybackend.entity.EventRegistration;
-import com.volleyball.volleyballcommunitybackend.service.AdminEventService;
 import com.volleyball.volleyballcommunitybackend.service.AdminGroupService;
 import com.volleyball.volleyballcommunitybackend.service.AdminUserService;
 import com.volleyball.volleyballcommunitybackend.service.ReportService;
@@ -38,16 +34,13 @@ public class AdminController {
     private final AdminUserService adminUserService;
     private final ReportService reportService;
     private final StatsService statsService;
-    private final AdminEventService adminEventService;
     private final AdminGroupService adminGroupService;
 
     public AdminController(AdminUserService adminUserService, ReportService reportService,
-                           StatsService statsService, AdminEventService adminEventService,
-                           AdminGroupService adminGroupService) {
+                           StatsService statsService, AdminGroupService adminGroupService) {
         this.adminUserService = adminUserService;
         this.reportService = reportService;
         this.statsService = statsService;
-        this.adminEventService = adminEventService;
         this.adminGroupService = adminGroupService;
     }
 
@@ -137,35 +130,6 @@ public class AdminController {
     public ResponseEntity<ApiResponse<ContentStatsResponse>> getContentStats() {
         ContentStatsResponse stats = statsService.getContentStats();
         return ResponseEntity.ok(ApiResponse.success(stats));
-    }
-
-    // ==================== 赛事管理接口 ====================
-
-    @GetMapping("/events")
-    public ResponseEntity<ApiResponse<Page<Event>>> getEventList(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Event> events = adminEventService.getEventList(pageable);
-        return ResponseEntity.ok(ApiResponse.success(events));
-    }
-
-    @PutMapping("/events/{id}/status")
-    public ResponseEntity<ApiResponse<Void>> updateEventStatus(
-            @PathVariable Long id,
-            @Valid @RequestBody UpdateEventStatusRequest request) {
-        adminEventService.updateEventStatus(id, request.getStatus());
-        return ResponseEntity.ok(ApiResponse.success("赛事状态更新成功", null));
-    }
-
-    @GetMapping("/events/{id}/registrations")
-    public ResponseEntity<ApiResponse<Page<EventRegistration>>> getEventRegistrations(
-            @PathVariable Long id,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<EventRegistration> registrations = adminEventService.getEventRegistrations(id, pageable);
-        return ResponseEntity.ok(ApiResponse.success(registrations));
     }
 
     // ==================== 群聊管理接口 ====================

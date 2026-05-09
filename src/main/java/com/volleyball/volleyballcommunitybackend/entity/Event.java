@@ -30,7 +30,16 @@ public class Event {
     private String type;
 
     @Column(name = "status", nullable = false)
-    private String status = "PREPARING";
+    private String status = "REGISTERING";
+
+    @Column(name = "format", nullable = false)
+    private String format = "SINGLE_ELIMINATION";
+
+    @Column(name = "bracket_size", nullable = false)
+    private Integer bracketSize;
+
+    @Column(name = "current_round")
+    private Integer currentRound;
 
     @Column(name = "start_time", nullable = false)
     private LocalDateTime startTime;
@@ -41,23 +50,17 @@ public class Event {
     @Column(name = "location", nullable = false)
     private String location;
 
-    @Column(name = "organizer", nullable = false)
+    @Column(name = "organizer")
     private String organizer;
 
     @Column(name = "requirements")
     private String requirements;
-
-    @Column(name = "max_participants")
-    private Integer maxParticipants;
 
     @Column(name = "fee", precision = 10, scale = 2)
     private BigDecimal fee;
 
     @Column(name = "contact_info")
     private String contactInfo;
-
-    @Column(name = "registration_deadline")
-    private LocalDateTime registrationDeadline;
 
     @Column(name = "created_by", nullable = false)
     private Long createdBy;

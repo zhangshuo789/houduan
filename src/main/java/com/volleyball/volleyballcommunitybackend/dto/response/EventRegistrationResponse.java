@@ -11,11 +11,10 @@ import java.time.LocalDateTime;
 public class EventRegistrationResponse {
     private Long id;
     private Long eventId;
+    private Long userId;
     private String teamName;
-    private String contactPerson;
-    private String contactPhone; // 脱敏
-    private Integer teamSize;
-    private String status;
-    private LocalDateTime reviewedAt;
+    private Integer bracketPosition;
+    private Boolean eliminated;
+    private Boolean isChampion;
     private LocalDateTime createdAt;
 }
