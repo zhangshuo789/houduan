@@ -45,8 +45,10 @@ public class EventController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<EventResponse>> getEventById(
             @PathVariable Long id,
-            HttpServletRequest request) {
-        EventResponse event = eventService.getEventById(id, request);
+            HttpServletRequest request,
+            Authentication authentication) {
+        Long userId = authentication != null ? (Long) authentication.getPrincipal() : null;
+        EventResponse event = eventService.getEventById(id, request, userId);
         return ResponseEntity.ok(ApiResponse.success(event));
     }
 

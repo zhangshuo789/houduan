@@ -38,13 +38,13 @@ public class EventService {
 
     public Page<EventResponse> getEventList(Pageable pageable, Long currentUserId) {
         return eventRepository.findAllByOrderByStartTimeAsc(pageable)
-                .map(event -> toEventResponse(event, null));
+                .map(event -> toEventResponse(event, null, currentUserId));
     }
 
-    public EventResponse getEventById(Long id, HttpServletRequest request) {
+    public EventResponse getEventById(Long id, HttpServletRequest request, Long currentUserId) {
         Event event = eventRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("赛事不存在"));
-        return toEventResponse(event, request);
+        return toEventResponse(event, request, currentUserId);
     }
 
     @Transactional
@@ -66,7 +66,7 @@ public class EventService {
         event.setCreatedBy(userId);
 
         Event saved = eventRepository.save(event);
-        return toEventResponse(saved, httpRequest);
+        return toEventResponse(saved, httpRequest, userId);
     }
 
     @Transactional
@@ -92,7 +92,7 @@ public class EventService {
         if (request.getContactInfo() != null) event.setContactInfo(request.getContactInfo());
 
         Event saved = eventRepository.save(event);
-        return toEventResponse(saved, null);
+        return toEventResponse(saved, null, userId);
     }
 
     @Transactional
@@ -111,7 +111,7 @@ public class EventService {
         return event.getCreatedBy().equals(userId);
     }
 
-    private EventResponse toEventResponse(Event event, HttpServletRequest request) {
+    private EventResponse toEventResponse(Event event, HttpServletRequest request, Long currentUserId) {
         EventResponse response = new EventResponse();
         response.setId(event.getId());
         response.setTitle(event.getTitle());
@@ -151,6 +151,13 @@ public class EventService {
         // 报名数
         long count = registrationRepository.countByEventId(event.getId());
         response.setRegistrationCount((int) count);
+
+        // 当前用户是否已报名
+        if (currentUserId != null) {
+            response.setHasRegistered(registrationRepository.existsByEventIdAndUserId(event.getId(), currentUserId));
+        } else {
+            response.setHasRegistered(false);
+        }
 
         return response;
     }
