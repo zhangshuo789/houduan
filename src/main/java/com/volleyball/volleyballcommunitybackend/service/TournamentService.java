@@ -400,20 +400,17 @@ public class TournamentService {
                 .orElseThrow(() -> new RuntimeException("赛事不存在"));
         checkOperatorPermission(event, operatorId);
 
-        int position = request.getBracketPosition();
-        // 校验位置合法
-        if (position < 0 || position >= event.getBracketSize()) {
-            throw new RuntimeException("位置编号超出范围");
+        long currentCount = registrationRepository.countByEventId(eventId);
+        if (currentCount >= event.getBracketSize()) {
+            throw new RuntimeException("报名已满，无可用位置");
         }
 
-        // 校验位置为空
-        if (registrationRepository.findByEventIdAndBracketPosition(eventId, position).isPresent()) {
-            throw new RuntimeException("该位置已被占用");
-        }
+        // 自动分配位置（与普通报名相同的分散策略）
+        int position = assignBracketPosition(eventId, event.getBracketSize());
 
         EventRegistration registration = new EventRegistration();
         registration.setEventId(eventId);
-        registration.setUserId(operatorId); // 组织者添加的队伍，userId 填组织者
+        registration.setUserId(operatorId);
         registration.setTeamName(request.getTeamName());
         registration.setBracketPosition(position);
         registration.setEliminated(false);

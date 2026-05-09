@@ -333,18 +333,18 @@ REGISTERING → IN_PROGRESS → ENDED
 
 **POST** `/api/event/{id}/bracket/team`
 
+位置由系统自动分配（与普通报名相同的分散策略）。
+
 **Request Body:**
 ```json
 {
-  "teamName": "新队伍",
-  "bracketPosition": 3
+  "teamName": "新队伍"
 }
 ```
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | teamName | String | 是 | 队伍名称 |
-| bracketPosition | Integer | 是 | 位置编号（0-based），必须为空位 |
 
 ---
 
