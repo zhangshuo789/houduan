@@ -21,13 +21,16 @@ public class TournamentService {
     private final EventRepository eventRepository;
     private final EventRegistrationRepository registrationRepository;
     private final TournamentMatchRepository matchRepository;
+    private final EventSubscriptionService subscriptionService;
 
     public TournamentService(EventRepository eventRepository,
                              EventRegistrationRepository registrationRepository,
-                             TournamentMatchRepository matchRepository) {
+                             TournamentMatchRepository matchRepository,
+                             EventSubscriptionService subscriptionService) {
         this.eventRepository = eventRepository;
         this.registrationRepository = registrationRepository;
         this.matchRepository = matchRepository;
+        this.subscriptionService = subscriptionService;
     }
 
     // ==================== 位置分配 ====================
@@ -206,6 +209,11 @@ public class TournamentService {
         event.setStatus("IN_PROGRESS");
         event.setCurrentRound(1);
         eventRepository.save(event);
+
+        // 通知订阅者：赛事已开赛
+        subscriptionService.notifySubscribers(eventId, "eventStatusChanged",
+                Map.of("eventId", eventId, "eventTitle", event.getTitle(),
+                        "status", "IN_PROGRESS", "message", "赛事已开赛"));
     }
 
     /**
@@ -322,6 +330,14 @@ public class TournamentService {
             }
         }
 
+        // 通知订阅者：比赛结果
+        EventRegistration winner = registrationRepository.findById(winnerId).orElse(null);
+        EventRegistration loserObj = loserId != null ? registrationRepository.findById(loserId).orElse(null) : null;
+        subscriptionService.notifySubscribers(eventId, "matchResult",
+                Map.of("eventId", eventId, "matchId", matchId, "round", match.getRound(),
+                        "winnerName", winner != null ? winner.getTeamName() : "",
+                        "loserName", loserObj != null ? loserObj.getTeamName() : ""));
+
         if ("KNOCKOUT".equals(match.getPhase())) {
             // 淘汰赛：胜者晋级
             advanceWinner(match, winnerId);
@@ -371,6 +387,11 @@ public class TournamentService {
 
         event.setStatus("ENDED");
         eventRepository.save(event);
+
+        // 通知订阅者：冠军产生
+        subscriptionService.notifySubscribers(event.getId(), "championCrowned",
+                Map.of("eventId", event.getId(), "eventTitle", event.getTitle(),
+                        "championName", champion.getTeamName()));
     }
 
     /**

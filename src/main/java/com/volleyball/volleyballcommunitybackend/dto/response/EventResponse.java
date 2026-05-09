@@ -32,4 +32,6 @@ public class EventResponse {
     private LocalDateTime updatedAt;
     private Integer registrationCount;
     private Boolean hasRegistered;
+    private Integer subscriberCount;
+    private Boolean isSubscribed;
 }

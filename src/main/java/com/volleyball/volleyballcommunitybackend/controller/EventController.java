@@ -7,6 +7,7 @@ import com.volleyball.volleyballcommunitybackend.dto.response.EventRegistrationR
 import com.volleyball.volleyballcommunitybackend.dto.response.EventResponse;
 import com.volleyball.volleyballcommunitybackend.service.EventRegistrationService;
 import com.volleyball.volleyballcommunitybackend.service.EventService;
+import com.volleyball.volleyballcommunitybackend.service.EventSubscriptionService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -21,10 +22,13 @@ public class EventController {
 
     private final EventService eventService;
     private final EventRegistrationService registrationService;
+    private final EventSubscriptionService subscriptionService;
 
-    public EventController(EventService eventService, EventRegistrationService registrationService) {
+    public EventController(EventService eventService, EventRegistrationService registrationService,
+                           EventSubscriptionService subscriptionService) {
         this.eventService = eventService;
         this.registrationService = registrationService;
+        this.subscriptionService = subscriptionService;
     }
 
     /**
@@ -117,5 +121,29 @@ public class EventController {
         }
         Page<EventRegistrationResponse> list = registrationService.getRegistrations(id, pageable);
         return ResponseEntity.ok(ApiResponse.success(list));
+    }
+
+    /**
+     * 订阅赛事（接收通知）
+     */
+    @PostMapping("/{id}/subscribe")
+    public ResponseEntity<ApiResponse<Void>> subscribe(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        subscriptionService.subscribe(id, userId);
+        return ResponseEntity.ok(ApiResponse.success("订阅成功", null));
+    }
+
+    /**
+     * 取消订阅
+     */
+    @DeleteMapping("/{id}/subscribe")
+    public ResponseEntity<ApiResponse<Void>> unsubscribe(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        subscriptionService.unsubscribe(id, userId);
+        return ResponseEntity.ok(ApiResponse.success("取消订阅成功", null));
     }
 }

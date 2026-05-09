@@ -23,15 +23,18 @@ public class EventService {
     private final EventRepository eventRepository;
     private final EventImageRepository eventImageRepository;
     private final EventRegistrationRepository registrationRepository;
+    private final EventSubscriptionRepository subscriptionRepository;
     private final UserRepository userRepository;
     private final FileService fileService;
 
     public EventService(EventRepository eventRepository, EventImageRepository eventImageRepository,
                         EventRegistrationRepository registrationRepository,
+                        EventSubscriptionRepository subscriptionRepository,
                         UserRepository userRepository, FileService fileService) {
         this.eventRepository = eventRepository;
         this.eventImageRepository = eventImageRepository;
         this.registrationRepository = registrationRepository;
+        this.subscriptionRepository = subscriptionRepository;
         this.userRepository = userRepository;
         this.fileService = fileService;
     }
@@ -155,9 +158,15 @@ public class EventService {
         // 当前用户是否已报名
         if (currentUserId != null) {
             response.setHasRegistered(registrationRepository.existsByEventIdAndUserId(event.getId(), currentUserId));
+            response.setIsSubscribed(subscriptionRepository.existsByEventIdAndUserId(event.getId(), currentUserId));
         } else {
             response.setHasRegistered(false);
+            response.setIsSubscribed(false);
         }
+
+        // 订阅数
+        long subCount = subscriptionRepository.countByEventId(event.getId());
+        response.setSubscriberCount((int) subCount);
 
         return response;
     }
