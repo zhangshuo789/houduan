@@ -71,6 +71,44 @@ public class TournamentService {
         return order;
     }
 
+    // ==================== 重建对阵图（修复已有数据）====================
+
+    /**
+     * 清除现有 match 记录，根据已报名队伍重新生成完整对阵图
+     */
+    @Transactional
+    public void rebuildBracket(Long eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("赛事不存在"));
+
+        // 删除旧的 match 记录
+        List<TournamentMatch> oldMatches = matchRepository.findByEventIdOrderByRoundAscMatchOrderAsc(eventId);
+        matchRepository.deleteAll(oldMatches);
+
+        // 如果是 IN_PROGRESS 状态，重置回 REGISTERING 以便重新走开赛流程
+        if ("IN_PROGRESS".equals(event.getStatus())) {
+            event.setStatus("REGISTERING");
+            event.setCurrentRound(null);
+            eventRepository.save(event);
+
+            // 重置所有队伍的淘汰/冠军状态
+            List<EventRegistration> registrations = registrationRepository.findByEventId(eventId);
+            for (EventRegistration reg : registrations) {
+                reg.setEliminated(false);
+                reg.setIsChampion(false);
+            }
+            registrationRepository.saveAll(registrations);
+        }
+
+        // 重新创建首轮 match
+        List<EventRegistration> registrations = registrationRepository.findByEventId(eventId);
+        for (EventRegistration reg : registrations) {
+            if (reg.getBracketPosition() != null) {
+                ensureFirstRoundMatch(eventId, event.getBracketSize(), reg.getBracketPosition(), reg.getId());
+            }
+        }
+    }
+
     // ==================== 报名时实时更新对阵图 ====================
 
     /**

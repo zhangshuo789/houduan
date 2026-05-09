@@ -36,6 +36,21 @@ public class TournamentController {
     }
 
     /**
+     * 重建对阵图（修复已有数据）
+     */
+    @PostMapping("/{id}/bracket/rebuild")
+    public ResponseEntity<ApiResponse<Void>> rebuildBracket(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        if (!isOrganizerOrAdmin(id, userId, authentication)) {
+            throw new RuntimeException("无权操作此赛事");
+        }
+        tournamentService.rebuildBracket(id);
+        return ResponseEntity.ok(ApiResponse.success("对阵图已重建", null));
+    }
+
+    /**
      * 组织者/管理员手动开赛
      */
     @PostMapping("/{id}/bracket/start")
