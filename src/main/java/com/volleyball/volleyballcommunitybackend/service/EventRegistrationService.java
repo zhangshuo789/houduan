@@ -56,6 +56,10 @@ public class EventRegistrationService {
         registration.setIsChampion(false);
 
         EventRegistration saved = registrationRepository.save(registration);
+
+        // 实时更新首轮对阵图
+        tournamentService.ensureFirstRoundMatch(eventId, event.getBracketSize(), position, saved.getId());
+
         return toResponse(saved);
     }
 

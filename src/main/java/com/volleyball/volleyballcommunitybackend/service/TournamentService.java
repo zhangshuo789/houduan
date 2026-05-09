@@ -71,10 +71,70 @@ public class TournamentService {
         return order;
     }
 
-    // ==================== 开赛 / 生成 Bracket ====================
+    // ==================== 报名时实时更新对阵图 ====================
 
     /**
-     * 开赛：生成完整的 bracket match 记录
+     * 报名/添加队伍后，确保首轮 match 存在并填入该队伍
+     * 同时预创建后续轮次的空 match（仅首次调用时）
+     */
+    @Transactional
+    public void ensureFirstRoundMatch(Long eventId, int bracketSize, int position, Long registrationId) {
+        int totalRounds = (int) (Math.log(bracketSize) / Math.log(2));
+        int firstRoundMatches = bracketSize / 2;
+        List<TournamentMatch> firstRound = matchRepository.findByEventIdAndRound(eventId, 1);
+
+        if (firstRound.isEmpty()) {
+            // 首次报名，预创建所有轮次的空 match
+            for (int round = totalRounds; round >= 1; round--) {
+                int matchesInRound = bracketSize / (int) Math.pow(2, round);
+                for (int order = 0; order < matchesInRound; order++) {
+                    TournamentMatch match = new TournamentMatch();
+                    match.setEventId(eventId);
+                    match.setRound(round);
+                    match.setMatchOrder(order);
+                    match.setPhase("KNOCKOUT");
+                    match.setStatus("PENDING");
+                    matchRepository.save(match);
+                }
+            }
+
+            // 设置 nextMatchId / nextMatchSlot 关系
+            List<List<TournamentMatch>> allRounds = new ArrayList<>();
+            for (int round = 1; round <= totalRounds; round++) {
+                allRounds.add(matchRepository.findByEventIdAndRound(eventId, round));
+            }
+            for (int roundIdx = 0; roundIdx < allRounds.size() - 1; roundIdx++) {
+                List<TournamentMatch> currentRound = allRounds.get(roundIdx);
+                List<TournamentMatch> nextRound = allRounds.get(roundIdx + 1);
+                for (int i = 0; i < currentRound.size(); i++) {
+                    TournamentMatch match = currentRound.get(i);
+                    TournamentMatch nextMatch = nextRound.get(i / 2);
+                    match.setNextMatchId(nextMatch.getId());
+                    match.setNextMatchSlot((i % 2) + 1);
+                }
+                matchRepository.saveAll(currentRound);
+            }
+
+            firstRound = allRounds.get(0);
+        }
+
+        // 填入该队伍到对应位置
+        int matchIndex = position / 2;
+        if (matchIndex < firstRound.size()) {
+            TournamentMatch match = firstRound.get(matchIndex);
+            if (position % 2 == 0) {
+                match.setTeam1Id(registrationId);
+            } else {
+                match.setTeam2Id(registrationId);
+            }
+            matchRepository.save(match);
+        }
+    }
+
+    // ==================== 开赛 ====================
+
+    /**
+     * 开赛：处理轮空，正式进入比赛阶段
      */
     @Transactional
     public void startEvent(Long eventId) {
@@ -102,101 +162,36 @@ public class TournamentService {
             return;
         }
 
-        if ("SINGLE_ELIMINATION".equals(event.getFormat())) {
-            generateSingleEliminationBracket(event, registrations);
-        } else {
-            // GROUP_ELIMINATION 先只生成小组循环赛
-            generateGroupStageBracket(event, registrations);
-        }
+        // 处理首轮轮空
+        processFirstRoundByes(eventId);
 
         event.setStatus("IN_PROGRESS");
         event.setCurrentRound(1);
         eventRepository.save(event);
     }
 
-    // ==================== 单败淘汰 Bracket 生成 ====================
-
-    private void generateSingleEliminationBracket(Event event, List<EventRegistration> registrations) {
-        int bracketSize = event.getBracketSize();
-        int totalRounds = (int) (Math.log(bracketSize) / Math.log(2));
-        Map<Integer, EventRegistration> positionMap = registrations.stream()
-                .filter(r -> r.getBracketPosition() != null)
-                .collect(Collectors.toMap(EventRegistration::getBracketPosition, r -> r));
-
-        // 创建所有轮次的 match 记录（从最后一轮到第一轮，便于设置 nextMatchId）
-        // 先创建后续轮次，再创建首轮
-        Map<String, TournamentMatch> matchSlotMap = new HashMap<>();
-
-        // 从最后一轮往前创建，记录每轮每场的 match 对象
-        // roundMatches[round][order] = TournamentMatch
-        List<List<TournamentMatch>> allRounds = new ArrayList<>();
-        for (int round = totalRounds; round >= 1; round--) {
-            int matchesInRound = bracketSize / (int) Math.pow(2, round);
-            List<TournamentMatch> roundMatches = new ArrayList<>();
-            for (int order = 0; order < matchesInRound; order++) {
-                TournamentMatch match = new TournamentMatch();
-                match.setEventId(event.getId());
-                match.setRound(round);
-                match.setMatchOrder(order);
-                match.setPhase("KNOCKOUT");
-                match.setStatus("PENDING");
-                roundMatches.add(match);
-            }
-            allRounds.add(0, roundMatches); // 插入到开头，保持轮次顺序
-        }
-
-        // 保存所有 match（先保存获取 ID）
-        for (List<TournamentMatch> roundMatches : allRounds) {
-            matchRepository.saveAll(roundMatches);
-        }
-
-        // 设置 nextMatchId / nextMatchSlot 关系
-        for (int roundIdx = 0; roundIdx < allRounds.size() - 1; roundIdx++) {
-            List<TournamentMatch> currentRound = allRounds.get(roundIdx);
-            List<TournamentMatch> nextRound = allRounds.get(roundIdx + 1);
-            for (int i = 0; i < currentRound.size(); i++) {
-                TournamentMatch match = currentRound.get(i);
-                TournamentMatch nextMatch = nextRound.get(i / 2);
-                match.setNextMatchId(nextMatch.getId());
-                match.setNextMatchSlot((i % 2) + 1); // 1 or 2
-            }
-            matchRepository.saveAll(currentRound);
-        }
-
-        // 填充首轮队伍 + 处理轮空
-        List<TournamentMatch> firstRound = allRounds.get(0);
-        for (int i = 0; i < firstRound.size(); i++) {
-            TournamentMatch match = firstRound.get(i);
-            int pos1 = i * 2;
-            int pos2 = i * 2 + 1;
-
-            EventRegistration team1 = positionMap.get(pos1);
-            EventRegistration team2 = positionMap.get(pos2);
-
-            if (team1 != null) {
-                match.setTeam1Id(team1.getId());
-            }
-            if (team2 != null) {
-                match.setTeam2Id(team2.getId());
-            }
-
-            // 处理轮空
-            if (team1 != null && team2 == null) {
-                // team1 轮空晋级
-                match.setWinnerId(team1.getId());
+    /**
+     * 处理首轮轮空：空位的 match 标记为 BYE，有队伍的一方自动晋级
+     */
+    private void processFirstRoundByes(Long eventId) {
+        List<TournamentMatch> firstRound = matchRepository.findByEventIdAndRound(eventId, 1);
+        for (TournamentMatch match : firstRound) {
+            if (match.getTeam1Id() != null && match.getTeam2Id() == null) {
+                match.setWinnerId(match.getTeam1Id());
                 match.setStatus("BYE");
-                advanceWinner(match, team1.getId());
-            } else if (team1 == null && team2 != null) {
-                // team2 轮空晋级
-                match.setWinnerId(team2.getId());
+                advanceWinner(match, match.getTeam1Id());
+            } else if (match.getTeam1Id() == null && match.getTeam2Id() != null) {
+                match.setWinnerId(match.getTeam2Id());
                 match.setStatus("BYE");
-                advanceWinner(match, team2.getId());
-            } else if (team1 == null && team2 == null) {
+                advanceWinner(match, match.getTeam2Id());
+            } else if (match.getTeam1Id() == null && match.getTeam2Id() == null) {
                 match.setStatus("BYE");
             }
+            matchRepository.save(match);
         }
-        matchRepository.saveAll(firstRound);
     }
+
+    // ==================== 小组循环赛 Bracket 生成（GROUP_ELIMINATION 模式开赛时调用）====================
 
     // ==================== 小组循环赛 Bracket 生成 ====================
 
@@ -418,27 +413,9 @@ public class TournamentService {
         EventRegistration saved = registrationRepository.save(registration);
 
         // 更新首轮 match 对应位置
-        if ("IN_PROGRESS".equals(event.getStatus()) || "REGISTERING".equals(event.getStatus())) {
-            updateFirstRoundMatchSlot(eventId, position, saved.getId());
-        }
+        ensureFirstRoundMatch(eventId, event.getBracketSize(), position, saved.getId());
 
         return saved;
-    }
-
-    private void updateFirstRoundMatchSlot(Long eventId, int position, Long registrationId) {
-        List<TournamentMatch> firstRound = matchRepository.findByEventIdAndRound(eventId, 1);
-        if (firstRound.isEmpty()) return;
-
-        int matchIndex = position / 2;
-        if (matchIndex >= firstRound.size()) return;
-
-        TournamentMatch match = firstRound.get(matchIndex);
-        if (position % 2 == 0) {
-            match.setTeam1Id(registrationId);
-        } else {
-            match.setTeam2Id(registrationId);
-        }
-        matchRepository.save(match);
     }
 
     // ==================== 获取 Bracket ====================
