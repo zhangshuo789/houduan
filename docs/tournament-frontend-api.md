@@ -169,6 +169,23 @@ REGISTERING → IN_PROGRESS → ENDED
 }
 ```
 
+**赛事详情 Response 新增字段：**
+
+```json
+{
+  "registrationCount": 3,
+  "hasRegistered": true,
+  "subscriberCount": 12,
+  "isSubscribed": false
+}
+```
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| hasRegistered | Boolean | 当前用户是否已报名（未登录为 false） |
+| subscriberCount | Integer | 订阅人数 |
+| isSubscribed | Boolean | 当前用户是否已订阅（未登录为 false） |
+
 **错误情况:**
 - 已报名：`"已报名该赛事"`
 - 报名已满：`"报名已满"`
@@ -425,7 +442,81 @@ match.status === "PENDING" && match.team1 !== null && match.team2 !== null
 
 ---
 
-## 六、错误码
+## 六、赛事订阅
+
+### 6.1 订阅赛事
+
+**POST** `/api/event/{id}/subscribe`
+
+需要登录。
+
+**Response:**
+```json
+{
+  "code": 200,
+  "message": "订阅成功"
+}
+```
+
+---
+
+### 6.2 取消订阅
+
+**DELETE** `/api/event/{id}/subscribe`
+
+**Response:**
+```json
+{
+  "code": 200,
+  "message": "取消订阅成功"
+}
+```
+
+---
+
+### 6.3 SSE 实时通知
+
+订阅赛事后，以下事件会通过 SSE 推送通知：
+
+**连接方式：**
+```
+GET /api/sse/connect
+```
+
+**监听的事件类型：**
+
+| eventType | 触发时机 | 推送数据 |
+|---|---|---|
+| `eventStatusChanged` | 赛事开赛 | `{ eventId, eventTitle, status, message }` |
+| `matchResult` | 比赛有结果 | `{ eventId, matchId, round, winnerName, loserName }` |
+| `championCrowned` | 冠军产生 | `{ eventId, eventTitle, championName }` |
+
+**前端监听示例：**
+```javascript
+const eventSource = new EventSource('/api/sse/connect');
+
+eventSource.addEventListener('eventStatusChanged', (e) => {
+  const data = JSON.parse(e.data);
+  // { eventId: 1, eventTitle: "...", status: "IN_PROGRESS", message: "赛事已开赛" }
+  showToast(`${data.eventTitle}: ${data.message}`);
+});
+
+eventSource.addEventListener('matchResult', (e) => {
+  const data = JSON.parse(e.data);
+  // { eventId: 1, matchId: 5, round: 1, winnerName: "飞鱼队", loserName: "旋风队" }
+  showToast(`第${data.round}轮: ${data.winnerName} 战胜 ${data.loserName}`);
+});
+
+eventSource.addEventListener('championCrowned', (e) => {
+  const data = JSON.parse(e.data);
+  // { eventId: 1, eventTitle: "...", championName: "飞鱼队" }
+  showToast(`🏆 ${data.championName} 获得冠军！`);
+});
+```
+
+---
+
+## 七、错误码
 
 | HTTP | 说明 |
 |---|---|
