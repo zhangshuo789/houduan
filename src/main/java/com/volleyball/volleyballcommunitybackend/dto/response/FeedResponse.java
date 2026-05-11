@@ -11,6 +11,8 @@ import java.time.LocalDateTime;
 public class FeedResponse {
     private Long postId;
     private String title;
+    private Long boardId;
+    private String boardName;
     private UserResponse user;
     private LocalDateTime createdAt;
 }

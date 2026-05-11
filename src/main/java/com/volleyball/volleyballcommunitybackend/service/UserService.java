@@ -4,10 +4,12 @@ import com.volleyball.volleyballcommunitybackend.dto.request.UpdateUserRequest;
 import com.volleyball.volleyballcommunitybackend.dto.response.FeedResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.UserResponse;
 import com.volleyball.volleyballcommunitybackend.dto.response.UserProfileStatsResponse;
+import com.volleyball.volleyballcommunitybackend.entity.Board;
 import com.volleyball.volleyballcommunitybackend.entity.FileEntity;
 import com.volleyball.volleyballcommunitybackend.entity.Follow;
 import com.volleyball.volleyballcommunitybackend.entity.Post;
 import com.volleyball.volleyballcommunitybackend.entity.User;
+import com.volleyball.volleyballcommunitybackend.repository.BoardRepository;
 import com.volleyball.volleyballcommunitybackend.repository.PostRepository;
 import com.volleyball.volleyballcommunitybackend.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,13 +27,16 @@ public class UserService {
     private final FileService fileService;
     private final FollowService followService;
     private final PostRepository postRepository;
+    private final BoardRepository boardRepository;
 
     public UserService(UserRepository userRepository, FileService fileService,
-                       FollowService followService, PostRepository postRepository) {
+                       FollowService followService, PostRepository postRepository,
+                       BoardRepository boardRepository) {
         this.userRepository = userRepository;
         this.fileService = fileService;
         this.followService = followService;
         this.postRepository = postRepository;
+        this.boardRepository = boardRepository;
     }
 
     public UserResponse getUserById(Long id, HttpServletRequest request) {
@@ -69,20 +74,7 @@ public class UserService {
 
     public Page<FeedResponse> getUserPosts(Long userId, Pageable pageable, HttpServletRequest request) {
         return postRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
-                .map(post -> {
-                    FeedResponse feed = new FeedResponse();
-                    feed.setPostId(post.getId());
-                    feed.setTitle(post.getTitle());
-                    feed.setCreatedAt(post.getCreatedAt());
-                    User user = userRepository.findById(post.getUserId())
-                            .orElseThrow(() -> new RuntimeException("用户不存在"));
-                    String avatarUrl = getAvatarUrl(user, request);
-                    feed.setUser(new UserResponse(
-                            user.getId(), user.getUsername(), user.getNickname(),
-                            avatarUrl, user.getBio(), user.getCreatedAt(), null
-                    ));
-                    return feed;
-                });
+                .map(post -> toFeedResponse(post, request));
     }
 
     public Page<FeedResponse> getUserFeed(Long userId, Pageable pageable, HttpServletRequest request) {
@@ -98,20 +90,25 @@ public class UserService {
 
         // 使用自定义查询获取关注的人的帖子
         return postRepository.findByUserIdInOrderByCreatedAtDesc(followingIds, pageable)
-                .map(post -> {
-                    FeedResponse feed = new FeedResponse();
-                    feed.setPostId(post.getId());
-                    feed.setTitle(post.getTitle());
-                    feed.setCreatedAt(post.getCreatedAt());
-                    User user = userRepository.findById(post.getUserId())
-                            .orElseThrow(() -> new RuntimeException("用户不存在"));
-                    String avatarUrl = getAvatarUrl(user, request);
-                    feed.setUser(new UserResponse(
-                            user.getId(), user.getUsername(), user.getNickname(),
-                            avatarUrl, user.getBio(), user.getCreatedAt(), null
-                    ));
-                    return feed;
-                });
+                .map(post -> toFeedResponse(post, request));
+    }
+
+    private FeedResponse toFeedResponse(Post post, HttpServletRequest request) {
+        FeedResponse feed = new FeedResponse();
+        feed.setPostId(post.getId());
+        feed.setTitle(post.getTitle());
+        feed.setCreatedAt(post.getCreatedAt());
+        feed.setBoardId(post.getBoardId());
+        boardRepository.findById(post.getBoardId())
+                .ifPresent(board -> feed.setBoardName(board.getName()));
+        User user = userRepository.findById(post.getUserId())
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+        String avatarUrl = getAvatarUrl(user, request);
+        feed.setUser(new UserResponse(
+                user.getId(), user.getUsername(), user.getNickname(),
+                avatarUrl, user.getBio(), user.getCreatedAt(), null
+        ));
+        return feed;
     }
 
     private UserResponse toUserResponse(User user, HttpServletRequest request) {
