@@ -14,7 +14,9 @@
       "Bash(git push:*)",
       "Bash(mysql:*)",
       "Bash(chmod +x D:/IDEProject/volleyball-community-backend/deploy.sh D:/IDEProject/volleyball-community-backend/run.sh)",
-      "Bash(ls -la D:/IDEProject/volleyball-community-backend/target/*.jar)"
+      "Bash(ls -la D:/IDEProject/volleyball-community-backend/target/*.jar)",
+      "Bash(git checkout:*)",
+      "Bash(rm:*)"
     ]
   }
 }
